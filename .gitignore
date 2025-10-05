@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 tmp/
 components/
 managed_components/
@@ -16,3 +17,49 @@ main/mmap_generate_emoji.h
 *.pyc
 *.bin
 mmap_generate_*.h
+=======
+# 数据库数据文件
+mysql/data/
+mysql/data_backup_*/
+
+# 模型文件（通常很大，不适合Git）
+models/*/
+
+# 临时文件和缓存
+tmp/
+*.tmp
+*.cache
+__pycache__/
+*.pyc
+*.pyo
+
+# 日志文件
+*.log
+logs/
+
+# 上传文件目录
+uploadfile/
+
+# 环境变量文件
+.env
+.env.local
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 备份文件
+backup/
+*.bak
+*.backup
+
+# 运行时文件
+*.pid
+*.sock
+>>>>>>> 0969f4f (Initial commit: 小智ESP32服务器项目)

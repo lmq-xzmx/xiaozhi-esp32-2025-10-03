@@ -1,0 +1,57 @@
+local_override:
+  ASR:
+    SenseVoiceStream:
+      # 减小chunk_size以降低延迟
+      chunk_size: 512
+      enable_realtime: true
+      model_dir: models/SenseVoiceSmall
+      output_dir: tmp/
+      type: sensevoice_stream
+      vad_model: fsmn-vad
+      # 新增并发控制参数
+      max_concurrent_sessions: 2
+      # 音频处理优化
+      audio_buffer_size: 2048
+      # VAD优化配置
+      vad_kwargs:
+        max_single_segment_time: 15000  # 减少到15秒
+        speech_pad_ms: 200
+        silence_pad_ms: 100
+  # 添加线程池配置
+  ThreadPool:
+    # ASR专用线程池
+    asr_max_workers: 2
+    # LLM线程池
+    llm_max_workers: 3
+    # TTS线程池  
+    tts_max_workers: 2
+  selected_module:
+    ASR: SenseVoiceStream
+
+# Manager-API配置保持不变
+manager-api:
+  secret: 06af18d1-03a3-4abf-adab-b8386975508f
+  url: http://xiaozhi-esp32-server-web:8002/xiaozhi
+read_config_from_api: true
+
+# 服务器配置优化
+server:
+  http_port: 8003
+  ip: 0.0.0.0
+  port: 8000
+  vision_explain: http://182.44.78.40:端口号/mcp/vision/explain
+  # WebSocket优化配置
+  websocket:
+    max_connections: 5
+    ping_interval: 30
+    ping_timeout: 10
+    close_timeout: 10
+    # 连接限制
+    max_concurrent_per_ip: 2
+
+# 性能监控配置
+monitoring:
+  enable_metrics: true
+  log_performance: true
+  memory_threshold_mb: 1000
+  cpu_threshold_percent: 80

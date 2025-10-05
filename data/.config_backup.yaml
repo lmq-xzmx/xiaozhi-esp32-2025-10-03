@@ -1,0 +1,20 @@
+local_override:
+  ASR:
+    SenseVoiceStream:
+      chunk_size: 1024
+      enable_realtime: true
+      model_dir: models/SenseVoiceSmall
+      output_dir: tmp/
+      type: sensevoice_stream
+      vad_model: fsmn-vad
+  selected_module:
+    ASR: SenseVoiceStream
+manager-api:
+  secret: 06af18d1-03a3-4abf-adab-b8386975508f
+  url: http://xiaozhi-esp32-server-web:8002/xiaozhi
+read_config_from_api: true
+server:
+  http_port: 8003
+  ip: 0.0.0.0
+  port: 8000
+  vision_explain: http://182.44.78.40:端口号/mcp/vision/explain
