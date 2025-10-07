@@ -21,6 +21,11 @@ services:
       - seccomp:unconfined
     environment:
       - TZ=Asia/Shanghai
+      # UTF-8编码设置，防止ASCII编码错误
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
       # Python性能优化
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
