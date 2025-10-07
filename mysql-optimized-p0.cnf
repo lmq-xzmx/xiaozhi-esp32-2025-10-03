@@ -1,0 +1,80 @@
+# MySQL P0优化配置 - 针对4核8GB服务器
+# 目标：将数据库内存使用率从95%降低到75%
+# 适用于：小智ESP32服务器，支持10-30台设备并发
+
+[mysqld]
+# 基础配置
+default-authentication-plugin=mysql_native_password
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+sql_mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+
+# === 内存优化配置 ===
+# InnoDB缓冲池 - 从256MB降低到180MB，减少内存压力
+innodb_buffer_pool_size=180M
+innodb_buffer_pool_instances=1
+
+# 连接数优化 - 从100降低到40，减少连接开销
+max_connections=40
+max_user_connections=35
+
+# 查询缓存优化 - 适度缓存，避免过度占用内存
+query_cache_type=1
+query_cache_size=24M
+query_cache_limit=2M
+
+# 临时表优化 - 减少内存使用
+tmp_table_size=16M
+max_heap_table_size=16M
+
+# 排序和连接缓冲区优化
+sort_buffer_size=1M
+join_buffer_size=1M
+read_buffer_size=512K
+read_rnd_buffer_size=512K
+
+# === 性能优化配置 ===
+# InnoDB性能优化
+innodb_log_file_size=64M
+innodb_log_buffer_size=8M
+innodb_flush_log_at_trx_commit=2
+innodb_flush_method=O_DIRECT
+innodb_file_per_table=1
+innodb_open_files=300
+
+# 线程和连接优化
+thread_cache_size=16
+table_open_cache=400
+table_definition_cache=400
+
+# 超时设置
+wait_timeout=300
+interactive_timeout=300
+connect_timeout=30
+net_read_timeout=30
+net_write_timeout=30
+
+# === 日志优化 ===
+# 慢查询日志
+slow_query_log=1
+slow_query_log_file=/var/log/mysql/slow.log
+long_query_time=2
+
+# 错误日志
+log_error=/var/log/mysql/error.log
+
+# 二进制日志优化（如果不需要主从复制可以关闭）
+# log_bin=OFF
+expire_logs_days=3
+max_binlog_size=100M
+
+# === 安全优化 ===
+# 禁用不必要的功能
+skip_name_resolve=1
+local_infile=0
+
+[mysql]
+default-character-set=utf8mb4
+
+[client]
+default-character-set=utf8mb4

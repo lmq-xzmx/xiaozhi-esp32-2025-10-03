@@ -114,26 +114,12 @@ tts_service:
     enable_redis_cache: true
     
   # TTS引擎配置
+  # 注意：TTS引擎配置现在通过 http://182.44.78.40:8002/#/model-config 统一管理
   engines:
     - name: "edge_tts"
-      weight: 50
+      weight: 100
       enabled: true
       free: true
-      
-    - name: "azure_tts"
-      weight: 30
-      enabled: true
-      api_key_env: "AZURE_TTS_KEY"
-      
-    - name: "xunfei_tts"
-      weight: 15
-      enabled: true
-      api_key_env: "XUNFEI_TTS_KEY"
-      
-    - name: "local_tts"
-      weight: 5
-      enabled: true
-      model_path: "/app/models/tts_model"
       
   # 音频优化配置
   audio:

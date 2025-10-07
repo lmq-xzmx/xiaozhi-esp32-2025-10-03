@@ -1,0 +1,190 @@
+# 立即优化方案配置
+# 针对4核8GB硬件，解决真机测评中的性能问题
+
+# 数据库优化配置 (解决95%内存使用率问题)
+database_optimization:
+  mysql_config:
+    # 内存优化 - 从512MB降到350MB
+    innodb_buffer_pool_size: "180M"      # 从200M降到180M
+    innodb_log_buffer_size: "6M"         # 从8M降到6M
+    key_buffer_size: "12M"               # 从16M降到12M
+    table_open_cache: 300                # 从400降到300
+    thread_cache_size: 6                 # 从8降到6
+    
+    # 连接优化
+    max_connections: 40                  # 从50降到40
+    wait_timeout: 300                    # 从600降到300
+    interactive_timeout: 300             # 从600降到300
+    
+    # 查询缓存优化
+    query_cache_size: "24M"              # 从32M降到24M
+    tmp_table_size: "24M"                # 从32M降到24M
+    max_heap_table_size: "24M"           # 从32M降到24M
+
+# LLM缓存激进优化 (提高命中率，减少远程调用)
+llm_cache_optimization:
+  redis_cache:
+    # 大幅提高缓存时间和大小
+    cache_ttl: 7200                      # 2小时 (从30分钟提升)
+    max_cache_size: 50000                # 5万条 (从1万提升)
+    semantic_cache: true
+    cache_compression: true              # 启用压缩节省内存
+    
+  # 语义相似度缓存
+  semantic_similarity:
+    threshold: 0.85                      # 相似度阈值
+    enable_fuzzy_match: true             # 模糊匹配
+    max_semantic_cache: 10000            # 语义缓存条数
+    
+  # 预测性缓存
+  predictive_cache:
+    enable: true
+    common_responses: 1000               # 预缓存常见回答
+    context_prediction: true             # 上下文预测
+
+# TTS本地化配置 (减少远程调用延迟)
+tts_local_optimization:
+  # Edge-TTS本地优先
+  engine_priority:
+    - name: "edge_tts_local"
+      weight: 80                         # 80%使用本地
+      max_concurrent: 20
+      
+    - name: "edge_tts_remote"
+      weight: 15                         # 15%使用远程备份
+      max_concurrent: 5
+      
+    - name: "other_remote"
+      weight: 5                          # 5%其他远程
+      max_concurrent: 2
+      
+  # 音频缓存激进策略
+  audio_cache:
+    cache_ttl: 14400                     # 4小时 (从1小时提升)
+    max_cache_size_mb: 1000              # 1GB (从500MB提升)
+    enable_pregeneration: true           # 预生成常用语音
+    common_phrases: 500                  # 预生成500个常用短语
+
+# VAD/ASR实时优化 (减少处理延迟)
+vad_asr_realtime:
+  vad_config:
+    # 更激进的实时处理
+    batch_size: 16                       # 从24降到16，减少等待
+    batch_wait_ms: 25                    # 从40ms降到25ms
+    max_concurrent: 30                   # 从36降到30
+    worker_threads: 2                    # 从3降到2，节省CPU
+    
+  asr_config:
+    # 流式处理优化
+    chunk_size_ms: 40                    # 从50ms降到40ms
+    overlap_ms: 8                        # 从10ms降到8ms
+    batch_size: 6                        # 从8降到6
+    max_concurrent: 20                   # 从24降到20
+    streaming_worker_threads: 1          # 专用流式线程
+
+# 资源重新分配 (基于真实使用情况)
+resource_reallocation:
+  # 容器资源限制调整
+  containers:
+    xiaozhi-esp32-server:
+      cpu_limit: "3.0"                  # 从3.2降到3.0
+      memory_limit: "5.0G"              # 从5.5G降到5.0G
+      
+    xiaozhi-esp32-server-db:
+      cpu_limit: "0.5"                  # 从0.4提升到0.5
+      memory_limit: "350M"              # 从400M降到350M
+      
+    xiaozhi-esp32-server-web:
+      cpu_limit: "0.3"
+      memory_limit: "300M"              # 从400M降到300M
+      
+    xiaozhi-esp32-server-redis:
+      cpu_limit: "0.2"                  # 从0.1提升到0.2
+      memory_limit: "350M"              # 从200M提升到350M (用于缓存)
+
+# 系统级优化
+system_optimization:
+  # 内核参数调优
+  kernel_params:
+    net.core.somaxconn: 2048
+    net.ipv4.tcp_max_syn_backlog: 2048
+    net.ipv4.tcp_fin_timeout: 15
+    vm.swappiness: 1                     # 减少swap使用
+    
+  # 文件描述符限制
+  file_limits:
+    soft_nofile: 65536
+    hard_nofile: 65536
+    
+  # CPU调度优化
+  cpu_scheduling:
+    policy: "performance"                # 性能优先模式
+    governor: "performance"
+
+# 监控和告警阈值调整
+monitoring_thresholds:
+  # 更严格的监控
+  memory_warning: 75                     # 从85%降到75%
+  memory_critical: 85                    # 从90%降到85%
+  cpu_warning: 75                        # 从85%降到75%
+  cpu_critical: 85                       # 从90%降到85%
+  
+  # 响应时间监控
+  response_time_warning: 300             # 300ms警告
+  response_time_critical: 500            # 500ms严重
+  
+  # 设备连接监控
+  device_count_warning: 25               # 25台设备警告
+  device_count_critical: 35              # 35台设备严重
+
+# 服务降级策略
+service_degradation:
+  # 自动降级触发条件
+  triggers:
+    - condition: "memory_usage > 85%"
+      action: "reduce_llm_concurrent_50%"
+      
+    - condition: "cpu_usage > 85%"
+      action: "enable_aggressive_cache"
+      
+    - condition: "response_time > 1000ms"
+      action: "switch_to_local_models"
+      
+    - condition: "device_count > 30"
+      action: "limit_new_connections"
+      
+  # 降级措施
+  degradation_actions:
+    reduce_llm_concurrent_50%:
+      llm_max_concurrent: 10             # 从20降到10
+      
+    enable_aggressive_cache:
+      cache_ttl: 14400                   # 4小时缓存
+      cache_hit_threshold: 0.7           # 降低命中阈值
+      
+    switch_to_local_models:
+      llm_local_priority: 90             # 90%使用本地
+      tts_local_priority: 95             # 95%使用本地
+      
+    limit_new_connections:
+      max_new_connections_per_minute: 5  # 限制新连接
+
+# 部署脚本配置
+deployment:
+  # 滚动更新策略
+  rolling_update:
+    max_unavailable: 1
+    max_surge: 1
+    
+  # 健康检查
+  health_check:
+    initial_delay: 30
+    period: 10
+    timeout: 5
+    failure_threshold: 3
+    
+  # 预热策略
+  warmup:
+    enable: true
+    warmup_requests: 10                  # 预热请求数
+    warmup_timeout: 60                   # 预热超时

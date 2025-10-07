@@ -11,19 +11,17 @@ def get_private_config_from_api() -> Dict[str, Any]:
     从API获取私有配置
     """
     # 默认配置
+    # 注意：TTS引擎配置现在通过 http://182.44.78.40:8002/#/model-config 统一管理
     config = {
         "api_keys": {
             "qwen": os.getenv("QWEN_API_KEY", ""),
             "baichuan": os.getenv("BAICHUAN_API_KEY", ""),
             "openai": os.getenv("OPENAI_API_KEY", ""),
-            "azure_tts": os.getenv("AZURE_TTS_KEY", ""),
-            "xunfei_tts": os.getenv("XUNFEI_TTS_KEY", ""),
         },
         "endpoints": {
             "qwen_base_url": os.getenv("QWEN_BASE_URL", ""),
             "baichuan_base_url": os.getenv("BAICHUAN_BASE_URL", ""),
             "openai_base_url": os.getenv("OPENAI_BASE_URL", ""),
-            "azure_tts_region": os.getenv("AZURE_TTS_REGION", "eastasia"),
         },
         "models": {
             "qwen_model": os.getenv("QWEN_MODEL", "qwen-turbo"),
@@ -48,6 +46,13 @@ def get_private_config_from_api() -> Dict[str, Any]:
             "enable_tts": os.getenv("ENABLE_TTS", "true").lower() == "true",
             "enable_vision": os.getenv("ENABLE_VISION", "false").lower() == "true",
         },
+        "server": {
+            "host": os.getenv("SERVER_HOST", "0.0.0.0"),
+            "port": int(os.getenv("SERVER_PORT", "8000")),
+            "websocket_port": int(os.getenv("WEBSOCKET_PORT", "8003")),
+            "auth_key": os.getenv("AUTH_KEY", ""),
+            "debug": os.getenv("DEBUG", "false").lower() == "true",
+        },
     }
     
     # 尝试从配置文件加载
@@ -61,6 +66,14 @@ def get_private_config_from_api() -> Dict[str, Any]:
             print(f"Warning: Failed to load private config from {config_file}: {e}")
     
     return config
+
+
+def get_config_from_api() -> Dict[str, Any]:
+    """
+    从API获取配置（兼容性函数）
+    """
+    return get_private_config_from_api()
+
 
 def load_config_file(file_path: str) -> Optional[Dict[str, Any]]:
     """

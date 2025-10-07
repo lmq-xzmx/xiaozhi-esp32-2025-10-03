@@ -1,0 +1,284 @@
+# P0级别系统优化配置
+# 目标：优化系统性能，支持100台设备并发访问
+
+# 内核参数优化
+kernel_parameters:
+  # 网络优化
+  network:
+    # TCP连接优化
+    net.core.somaxconn: 65536  # 增加监听队列长度
+    net.core.netdev_max_backlog: 5000  # 网络设备接收队列
+    net.core.rmem_default: 262144  # 默认接收缓冲区
+    net.core.rmem_max: 16777216    # 最大接收缓冲区
+    net.core.wmem_default: 262144  # 默认发送缓冲区
+    net.core.wmem_max: 16777216    # 最大发送缓冲区
+    
+    # TCP参数优化
+    net.ipv4.tcp_rmem: "4096 87380 16777216"  # TCP接收缓冲区
+    net.ipv4.tcp_wmem: "4096 65536 16777216"  # TCP发送缓冲区
+    net.ipv4.tcp_congestion_control: "bbr"    # 使用BBR拥塞控制
+    net.ipv4.tcp_window_scaling: 1            # 启用窗口缩放
+    net.ipv4.tcp_timestamps: 0               # 禁用时间戳减少延迟
+    net.ipv4.tcp_sack: 1                     # 启用选择性确认
+    net.ipv4.tcp_fack: 1                     # 启用前向确认
+    net.ipv4.tcp_fin_timeout: 30             # FIN超时时间
+    net.ipv4.tcp_keepalive_time: 600         # keepalive时间
+    net.ipv4.tcp_keepalive_intvl: 30         # keepalive间隔
+    net.ipv4.tcp_keepalive_probes: 3         # keepalive探测次数
+    
+    # 连接跟踪优化
+    net.netfilter.nf_conntrack_max: 1048576  # 最大连接跟踪数
+    net.netfilter.nf_conntrack_tcp_timeout_established: 7200
+    
+  # 内存管理优化
+  memory:
+    vm.swappiness: 10                # 减少swap使用
+    vm.dirty_ratio: 15               # 脏页比例
+    vm.dirty_background_ratio: 5     # 后台脏页比例
+    vm.dirty_expire_centisecs: 3000  # 脏页过期时间
+    vm.dirty_writeback_centisecs: 500 # 脏页回写间隔
+    vm.overcommit_memory: 1          # 允许内存过量分配
+    vm.max_map_count: 262144         # 最大内存映射数
+    
+  # 文件系统优化
+  filesystem:
+    fs.file-max: 1048576             # 最大文件句柄数
+    fs.nr_open: 1048576              # 进程最大打开文件数
+    fs.inotify.max_user_watches: 524288  # inotify监控数
+    fs.aio-max-nr: 1048576           # 异步IO最大数
+    
+  # 进程和线程优化
+  process:
+    kernel.pid_max: 4194304          # 最大进程ID
+    kernel.threads-max: 1048576      # 最大线程数
+    kernel.sched_migration_cost_ns: 5000000  # 调度迁移成本
+    
+# 系统限制优化
+system_limits:
+  # 用户限制
+  ulimits:
+    - domain: "*"
+      type: soft
+      item: nofile
+      value: 65536
+    - domain: "*"
+      type: hard
+      item: nofile
+      value: 65536
+    - domain: "*"
+      type: soft
+      item: nproc
+      value: 32768
+    - domain: "*"
+      type: hard
+      item: nproc
+      value: 32768
+    - domain: "*"
+      type: soft
+      item: memlock
+      value: unlimited
+    - domain: "*"
+      type: hard
+      item: memlock
+      value: unlimited
+      
+  # 系统服务限制
+  systemd_limits:
+    DefaultLimitNOFILE: 65536
+    DefaultLimitNPROC: 32768
+    DefaultLimitMEMLOCK: infinity
+
+# CPU优化
+cpu_optimization:
+  # CPU调度器
+  governor: "performance"  # 性能模式
+  scaling_min_freq: "max"  # 最小频率设为最大
+  
+  # CPU亲和性
+  irq_affinity:
+    enable: true
+    cpu_mask: "0x0F"  # 使用前4个CPU核心处理中断
+    
+  # 禁用不必要的功能
+  disable_features:
+    - c_states      # 禁用CPU睡眠状态
+    - p_states      # 禁用CPU频率调节
+    - hyperthreading # 如果需要可禁用超线程
+    
+# 磁盘IO优化
+disk_optimization:
+  # IO调度器
+  scheduler: "noop"  # 使用noop调度器减少延迟
+  
+  # 挂载选项
+  mount_options:
+    - noatime      # 禁用访问时间更新
+    - nodiratime   # 禁用目录访问时间
+    - nobarrier    # 禁用写屏障（SSD）
+    - data=writeback # 使用writeback模式
+    
+  # 预读优化
+  readahead: 256   # 设置预读大小
+
+# 网络接口优化
+network_interface:
+  # 网卡队列优化
+  rx_ring_buffer: 4096  # 接收环形缓冲区
+  tx_ring_buffer: 4096  # 发送环形缓冲区
+  
+  # 中断合并
+  rx_usecs: 50          # 接收中断延迟
+  tx_usecs: 50          # 发送中断延迟
+  
+  # 多队列支持
+  enable_rss: true      # 启用RSS
+  rss_queues: 4         # RSS队列数
+
+# 应用级优化
+application_optimization:
+  # 环境变量
+  environment:
+    # Python优化
+    PYTHONUNBUFFERED: "1"
+    PYTHONDONTWRITEBYTECODE: "1"
+    PYTHONHASHSEED: "random"
+    
+    # 内存分配器优化
+    MALLOC_ARENA_MAX: "2"
+    MALLOC_MMAP_THRESHOLD_: "131072"
+    MALLOC_TRIM_THRESHOLD_: "131072"
+    
+    # 线程库优化
+    OMP_NUM_THREADS: "4"
+    MKL_NUM_THREADS: "4"
+    NUMBA_NUM_THREADS: "4"
+    OPENBLAS_NUM_THREADS: "4"
+    
+    # 内存管理
+    MALLOC_CONF: "background_thread:true,metadata_thp:auto,dirty_decay_ms:30000,muzzy_decay_ms:30000"
+    
+  # JVM优化（如果使用Java组件）
+  jvm_options:
+    - "-XX:+UseG1GC"
+    - "-XX:MaxGCPauseMillis=200"
+    - "-XX:+UseStringDeduplication"
+    - "-XX:+OptimizeStringConcat"
+    
+# 容器优化
+container_optimization:
+  # Docker配置
+  docker:
+    # 存储驱动优化
+    storage_driver: "overlay2"
+    storage_opts:
+      - "overlay2.override_kernel_check=true"
+      
+    # 日志驱动
+    log_driver: "json-file"
+    log_opts:
+      max-size: "10m"
+      max-file: "3"
+      
+    # 网络优化
+    default_ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      nproc:
+        soft: 32768
+        hard: 32768
+        
+  # 容器运行时优化
+  runtime_options:
+    - "--security-opt seccomp=unconfined"  # 禁用seccomp减少延迟
+    - "--security-opt apparmor=unconfined"  # 禁用AppArmor
+    - "--cap-add=SYS_NICE"                 # 允许调整进程优先级
+    - "--cap-add=SYS_RESOURCE"             # 允许调整资源限制
+
+# 监控和调优
+monitoring:
+  # 性能指标监控
+  metrics:
+    - name: "cpu_usage"
+      threshold: 80
+      action: "alert"
+      
+    - name: "memory_usage"
+      threshold: 85
+      action: "alert"
+      
+    - name: "disk_io_wait"
+      threshold: 20
+      action: "alert"
+      
+    - name: "network_latency"
+      threshold: 10
+      action: "alert"
+      
+    - name: "open_files"
+      threshold: 50000
+      action: "alert"
+      
+  # 自动调优
+  auto_tuning:
+    enable: true
+    interval: 300  # 5分钟检查一次
+    
+    # 动态调整参数
+    dynamic_params:
+      - "net.core.somaxconn"
+      - "vm.dirty_ratio"
+      - "kernel.sched_migration_cost_ns"
+
+# 安全优化
+security_optimization:
+  # 最小化攻击面
+  disable_services:
+    - "bluetooth"
+    - "cups"
+    - "avahi-daemon"
+    
+  # 内核安全
+  kernel_security:
+    kernel.dmesg_restrict: 1
+    kernel.kptr_restrict: 2
+    kernel.yama.ptrace_scope: 1
+    
+  # 网络安全
+  network_security:
+    net.ipv4.conf.all.send_redirects: 0
+    net.ipv4.conf.default.send_redirects: 0
+    net.ipv4.conf.all.accept_redirects: 0
+    net.ipv4.conf.default.accept_redirects: 0
+
+# 部署脚本
+deployment:
+  # 系统优化脚本
+  optimization_script: |
+    #!/bin/bash
+    # 应用内核参数
+    sysctl -p /etc/sysctl.d/99-xiaozhi-optimization.conf
+    
+    # 设置CPU调度器
+    echo performance > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    
+    # 设置IO调度器
+    echo noop > /sys/block/*/queue/scheduler
+    
+    # 禁用透明大页
+    echo never > /sys/kernel/mm/transparent_hugepage/enabled
+    
+    # 设置网卡参数
+    ethtool -G eth0 rx 4096 tx 4096 2>/dev/null || true
+    ethtool -C eth0 rx-usecs 50 tx-usecs 50 2>/dev/null || true
+    
+  # 验证脚本
+  validation_script: |
+    #!/bin/bash
+    # 验证优化是否生效
+    echo "=== 系统优化验证 ==="
+    echo "文件描述符限制: $(ulimit -n)"
+    echo "进程限制: $(ulimit -u)"
+    echo "CPU调度器: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+    echo "网络队列长度: $(cat /proc/sys/net/core/somaxconn)"
+    echo "内存交换倾向: $(cat /proc/sys/vm/swappiness)"

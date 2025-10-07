@@ -1,0 +1,172 @@
+# P0级别TTS本地优先策略配置
+# 目标：TTS延迟从500-1000ms降低到50-150ms，缓存命中率提升到80%+
+
+tts_optimization:
+  # 引擎优先级配置（P0优化）
+  engine_priority:
+    # 本地Edge-TTS最高优先级
+    edge_tts:
+      weight: 80                          # 80%流量使用本地Edge-TTS
+      priority: 1                         # 最高优先级
+      max_text_length: 500               # 最大文本长度
+      timeout: 2                         # 2秒超时
+      enabled: true
+      voices:
+        - "zh-CN-XiaoxiaoNeural"         # 小晓（女声）
+        - "zh-CN-YunxiNeural"            # 云希（男声）
+        - "zh-CN-XiaoyiNeural"           # 小艺（童声）
+        - "zh-CN-YunjianNeural"          # 云健（新闻男声）
+    
+    # 远程TTS作为备份
+    azure_tts:
+      weight: 15                         # 15%流量
+      priority: 2                        # 中等优先级
+      trigger_conditions:
+        - "edge_tts_timeout"
+        - "edge_tts_error"
+        - "text_length > 500"
+      timeout: 5
+      enabled: true
+    
+    xunfei_tts:
+      weight: 5                          # 5%流量
+      priority: 3                        # 低优先级
+      trigger_conditions:
+        - "all_other_failed"
+      timeout: 8
+      enabled: true
+
+  # 音频预缓存策略（P0核心优化）
+  audio_precaching:
+    enabled: true
+    cache_size: "1GB"                    # 最大缓存1GB
+    cache_ttl: 14400                     # 4小时过期
+    cleanup_interval: 1800               # 30分钟清理一次
+    compression: true                    # 启用音频压缩
+    
+    # 预缓存常用短语（启动时生成）
+    preload_phrases:
+      greetings:
+        - "你好"
+        - "早上好"
+        - "下午好"
+        - "晚上好"
+        - "欢迎使用"
+        - "很高兴为您服务"
+      
+      responses:
+        - "好的"
+        - "明白了"
+        - "没问题"
+        - "请稍等"
+        - "正在处理"
+        - "已经完成"
+        - "收到"
+        - "了解"
+      
+      errors:
+        - "抱歉，我没听清"
+        - "请重新说一遍"
+        - "网络连接异常"
+        - "系统繁忙，请稍后再试"
+        - "语音识别失败"
+      
+      confirmations:
+        - "是的"
+        - "不是"
+        - "确认"
+        - "取消"
+        - "继续"
+        - "停止"
+    
+    # 智能缓存策略
+    smart_caching:
+      # 高频词汇自动缓存
+      auto_cache_threshold: 3            # 使用3次以上自动缓存
+      
+      # 相似文本合并缓存
+      similarity_threshold: 0.9          # 相似度90%以上合并
+      
+      # 缓存优先级规则
+      priority_rules:
+        - pattern: "^(你好|早上好|晚上好|欢迎)"
+          priority: "high"
+          ttl: 86400                     # 24小时
+        - pattern: "^(好的|明白|没问题|收到)"
+          priority: "high"
+          ttl: 86400
+        - length: "< 10"
+          priority: "medium"
+          ttl: 14400                     # 4小时
+        - length: "> 100"
+          priority: "low"
+          ttl: 3600                      # 1小时
+
+  # 音频质量优化
+  audio_optimization:
+    # 格式优化
+    format: "opus"                       # 使用Opus格式，压缩率更高
+    bitrate: 48000                       # 48kbps，平衡质量和大小
+    sample_rate: 24000                   # 24kHz采样率
+    compression_level: 6                 # 中等压缩级别
+    
+    # 流式传输优化
+    streaming:
+      enabled: true
+      chunk_size: 4096                   # 4KB块大小
+      buffer_size: 16384                 # 16KB缓冲区
+      
+  # 并发和性能优化
+  performance:
+    # 并发控制
+    max_concurrent_requests: 40          # 从30提升到40
+    worker_threads: 12                   # 从8提升到12
+    queue_size: 100                      # 队列大小
+    
+    # 超时控制
+    request_timeout: 15                  # 15秒总超时
+    synthesis_timeout: 10                # 10秒合成超时
+    cache_timeout: 2                     # 2秒缓存超时
+    
+    # 资源限制
+    max_audio_length: 300                # 最大音频长度5分钟
+    max_text_length: 1000               # 最大文本长度
+    
+  # 监控和告警
+  monitoring:
+    # 性能指标
+    metrics:
+      - "cache_hit_rate"                 # 缓存命中率
+      - "average_latency"                # 平均延迟
+      - "engine_success_rate"            # 引擎成功率
+      - "concurrent_requests"            # 并发请求数
+      
+    # 告警阈值
+    alerts:
+      cache_hit_rate_low: 0.6            # 缓存命中率低于60%告警
+      latency_high: 200                  # 延迟超过200ms告警
+      error_rate_high: 0.05              # 错误率超过5%告警
+      
+  # 故障转移策略
+  failover:
+    # 引擎故障转移
+    engine_failover:
+      enabled: true
+      retry_attempts: 2                  # 重试2次
+      retry_delay: 1                     # 重试间隔1秒
+      circuit_breaker_threshold: 5       # 熔断阈值
+      circuit_breaker_timeout: 30        # 熔断恢复时间30秒
+      
+    # 缓存故障转移
+    cache_failover:
+      enabled: true
+      fallback_to_memory: true           # 回退到内存缓存
+      memory_cache_size: "256MB"         # 内存缓存大小
+      
+# 预期优化效果
+expected_improvements:
+  latency_reduction: "60-80%"            # 延迟降低60-80%
+  cache_hit_rate: "80%+"                 # 缓存命中率80%+
+  concurrent_capacity: "+33%"            # 并发能力提升33%
+  resource_efficiency: "+25%"            # 资源效率提升25%
+  availability: "99.5%+"                 # 可用性99.5%+

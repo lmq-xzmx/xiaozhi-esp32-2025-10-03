@@ -1,0 +1,146 @@
+# LLM缓存P0优化配置
+# 目标：将缓存命中率从当前20-30%提升到60-80%
+# 策略：激进缓存 + 语义缓存 + 预缓存
+
+# Redis缓存配置
+redis_cache:
+  # 激进缓存策略 - 大幅延长缓存时间
+  cache_ttl: 7200                    # 2小时 (从24小时调整为2小时，平衡性能和时效性)
+  max_cache_size: 50000              # 5万条缓存 (从1000条大幅提升)
+  cache_compression: true            # 启用压缩，节省内存
+  
+  # 缓存键优化
+  key_strategy: "semantic_hash"      # 使用语义哈希
+  ignore_params: ["timestamp", "session_id"]  # 忽略时间戳等无关参数
+  
+  # 内存管理
+  memory_limit: "256MB"              # 限制缓存内存使用
+  eviction_policy: "lru"             # LRU淘汰策略
+
+# 语义缓存配置
+semantic_cache:
+  enabled: true
+  similarity_threshold: 0.85         # 相似度阈值 (85%以上认为相似)
+  embedding_model: "all-MiniLM-L6-v2"  # 轻量级嵌入模型
+  
+  # 语义匹配优化
+  fuzzy_match: true                  # 启用模糊匹配
+  context_aware: true                # 上下文感知
+  intent_clustering: true            # 意图聚类
+  
+  # 性能优化
+  batch_embedding: true              # 批量嵌入计算
+  embedding_cache: true              # 嵌入向量缓存
+  max_embedding_cache: 10000         # 最大嵌入缓存数
+
+# 预缓存策略
+pre_cache:
+  enabled: true
+  
+  # 常用对话预缓存
+  common_phrases:
+    greetings:
+      - "你好"
+      - "早上好"
+      - "晚上好"
+      - "您好"
+    confirmations:
+      - "好的"
+      - "明白了"
+      - "没问题"
+      - "收到"
+    questions:
+      - "现在几点了"
+      - "今天天气怎么样"
+      - "播放音乐"
+      - "关闭灯光"
+    errors:
+      - "抱歉，我没听清"
+      - "请重试"
+      - "网络连接异常"
+      - "服务暂时不可用"
+  
+  # 预测性缓存
+  predictive_cache:
+    enabled: true
+    context_window: 5                # 考虑前5轮对话
+    prediction_threshold: 0.7        # 预测置信度阈值
+    max_predictions: 100             # 最大预测缓存数
+
+# 缓存策略配置
+cache_strategies:
+  # 多层缓存
+  multi_level:
+    l1_cache:                        # 内存缓存
+      type: "memory"
+      size: "64MB"
+      ttl: 300                       # 5分钟
+    l2_cache:                        # Redis缓存
+      type: "redis"
+      size: "256MB"
+      ttl: 7200                      # 2小时
+    l3_cache:                        # 持久化缓存
+      type: "disk"
+      size: "1GB"
+      ttl: 86400                     # 24小时
+  
+  # 智能缓存更新
+  smart_update:
+    enabled: true
+    update_threshold: 0.9            # 相似度>90%时更新而非新建
+    merge_similar: true              # 合并相似缓存项
+    auto_cleanup: true               # 自动清理过期缓存
+
+# 缓存性能监控
+monitoring:
+  metrics:
+    - "cache_hit_rate"               # 缓存命中率
+    - "cache_miss_rate"              # 缓存未命中率
+    - "semantic_match_rate"          # 语义匹配率
+    - "cache_memory_usage"           # 缓存内存使用
+    - "cache_response_time"          # 缓存响应时间
+  
+  alerts:
+    low_hit_rate:
+      threshold: 0.4                 # 命中率低于40%告警
+      action: "adjust_threshold"
+    high_memory:
+      threshold: 0.9                 # 内存使用超过90%告警
+      action: "cleanup_cache"
+
+# 缓存优化规则
+optimization_rules:
+  # 动态阈值调整
+  dynamic_threshold:
+    enabled: true
+    min_threshold: 0.75              # 最小相似度阈值
+    max_threshold: 0.95              # 最大相似度阈值
+    adjustment_interval: 3600        # 每小时调整一次
+  
+  # 热点数据识别
+  hotspot_detection:
+    enabled: true
+    access_count_threshold: 10       # 访问次数阈值
+    time_window: 3600                # 时间窗口(秒)
+    boost_ttl_multiplier: 2          # 热点数据TTL倍数
+  
+  # 冷数据清理
+  cold_data_cleanup:
+    enabled: true
+    access_threshold: 2              # 访问次数阈值
+    age_threshold: 1800              # 数据年龄阈值(秒)
+    cleanup_interval: 600            # 清理间隔(秒)
+
+# 故障恢复配置
+failover:
+  # 缓存故障处理
+  cache_failure:
+    fallback_to_compute: true        # 缓存失败时回退到计算
+    max_retry: 3                     # 最大重试次数
+    retry_delay: 1                   # 重试延迟(秒)
+  
+  # Redis连接故障
+  redis_failure:
+    local_cache_fallback: true       # 回退到本地缓存
+    reconnect_interval: 30           # 重连间隔(秒)
+    max_reconnect_attempts: 10       # 最大重连次数

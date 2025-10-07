@@ -1,0 +1,225 @@
+# P0级别 VAD/ASR 实时处理优化配置
+# 目标：延迟从800ms降低到200ms以下，支持100台设备并发
+
+vad_optimization:
+  # 模型优化
+  model:
+    use_onnx: true
+    model_path: "/app/models/silero_vad_optimized.onnx"
+    quantization: "int8"  # INT8量化，减少模型大小和推理时间
+    graph_optimization: "all"
+    enable_tensorrt: true  # 如果有GPU，启用TensorRT加速
+    
+  # 实时处理参数
+  realtime:
+    chunk_size: 512  # 32ms@16kHz，极低延迟
+    chunk_overlap: 64  # 4ms重叠
+    max_silence_ms: 300  # 最大静音300ms
+    min_speech_ms: 100  # 最小语音100ms
+    speech_threshold: 0.6  # 语音检测阈值
+    
+  # 批处理优化
+  batch_processing:
+    batch_size: 32  # 增加到32，提高吞吐量
+    max_batch_wait_ms: 15  # 最大等待15ms
+    min_batch_size: 4
+    dynamic_batching: true
+    priority_processing: true
+    
+  # 并发优化
+  concurrency:
+    max_concurrent: 48  # 支持48个并发请求
+    worker_threads: 6  # 6个工作线程
+    async_workers: 4  # 4个异步工作线程
+    queue_size: 200
+    
+  # 内存优化
+  memory:
+    audio_buffer_pool: 128  # 音频缓冲池
+    result_cache_size: 5000
+    enable_memory_mapping: true
+    gc_threshold: 0.9
+    
+  # 缓存策略
+  cache:
+    enable_redis: true
+    ttl: 600  # 10分钟缓存
+    max_size: 20000
+    compression: true
+    semantic_cache: true
+    
+  # 性能监控
+  monitoring:
+    enable_metrics: true
+    latency_target_ms: 50  # 目标延迟50ms
+    throughput_target_qps: 100
+    alert_threshold_ms: 100
+
+asr_optimization:
+  # 模型优化
+  model:
+    name: "SenseVoiceSmall"
+    model_path: "/app/models/SenseVoiceSmall_int8"  # INT8量化版本
+    fallback_path: "/app/models/SenseVoiceSmall_fp16"
+    quantization: "int8"
+    enable_jit: true
+    enable_tensorrt: true
+    beam_size: 1  # 贪婪解码，最快速度
+    
+  # 流式处理优化
+  streaming:
+    enable_realtime: true
+    chunk_size: 800  # 50ms@16kHz
+    chunk_duration_ms: 50
+    overlap_ms: 10
+    max_audio_length_s: 30  # 最大音频长度30秒
+    
+    # 流式缓冲区
+    buffer:
+      max_buffer_size: 3200  # 200ms缓冲
+      min_process_size: 400   # 25ms最小处理
+      flush_threshold: 1600   # 100ms刷新阈值
+      buffer_pool_size: 64
+      
+  # 批处理优化
+  batch_processing:
+    batch_size: 16  # 优化的批次大小
+    max_batch_wait_ms: 20  # 20ms最大等待
+    min_batch_size: 2
+    dynamic_batching: true
+    priority_queue: true
+    
+  # 并发优化
+  concurrency:
+    max_concurrent: 40  # 40个并发请求
+    worker_threads: 4   # 4个工作线程
+    stream_workers: 3   # 3个流式工作线程
+    queue_size: 150
+    
+  # 音频预处理优化
+  audio_processing:
+    enable_vad_filter: true  # VAD预过滤
+    noise_reduction: false   # 关闭降噪以减少延迟
+    auto_gain_control: false # 关闭AGC以减少延迟
+    resample_quality: "fast" # 快速重采样
+    
+  # 内存优化
+  memory:
+    max_memory_mb: 2048
+    audio_buffer_pool_size: 64
+    result_cache_size: 2000
+    enable_model_cache: true
+    preload_model: true
+    
+  # 缓存优化
+  cache:
+    enable_redis: true
+    cache_ttl: 1200  # 20分钟缓存
+    max_cache_size: 30000
+    semantic_cache: true
+    compression: true
+    
+  # 性能监控
+  monitoring:
+    enable_metrics: true
+    latency_target_ms: 150  # 目标延迟150ms
+    throughput_target_qps: 50
+    alert_threshold_ms: 300
+
+# 系统级优化
+system_optimization:
+  # CPU优化
+  cpu:
+    governor: "performance"  # 性能模式
+    scaling_min_freq: "max"
+    disable_c_states: true   # 禁用CPU睡眠状态
+    
+  # 内存优化
+  memory:
+    swappiness: 10  # 减少swap使用
+    dirty_ratio: 15
+    dirty_background_ratio: 5
+    
+  # 网络优化
+  network:
+    tcp_congestion_control: "bbr"
+    tcp_window_scaling: true
+    tcp_timestamps: false  # 减少网络延迟
+    
+  # 文件系统优化
+  filesystem:
+    noatime: true  # 禁用访问时间更新
+    elevator: "noop"  # 使用noop调度器
+    
+# 容器优化
+container_optimization:
+  # Docker配置
+  docker:
+    shm_size: "2g"
+    ulimits:
+      nofile: 65536
+      nproc: 32768
+    
+  # 资源限制
+  resources:
+    vad_service:
+      cpu_request: "1.5"
+      cpu_limit: "3.0"
+      memory_request: "1.5Gi"
+      memory_limit: "3Gi"
+      
+    asr_service:
+      cpu_request: "2.0"
+      cpu_limit: "4.0"
+      memory_request: "2Gi"
+      memory_limit: "4Gi"
+      
+  # 亲和性配置
+  affinity:
+    enable_cpu_pinning: true
+    vad_cpus: "0-1"  # VAD绑定到CPU 0-1
+    asr_cpus: "2-3"  # ASR绑定到CPU 2-3
+
+# 监控和告警
+monitoring:
+  metrics:
+    - name: "vad_latency_p95"
+      target: 50
+      alert_threshold: 100
+      
+    - name: "asr_latency_p95"
+      target: 150
+      alert_threshold: 300
+      
+    - name: "concurrent_requests"
+      target: 80
+      alert_threshold: 90
+      
+    - name: "memory_usage_percent"
+      target: 70
+      alert_threshold: 85
+      
+    - name: "cpu_usage_percent"
+      target: 75
+      alert_threshold: 90
+
+# 故障转移和恢复
+failover:
+  # 健康检查
+  health_check:
+    interval_ms: 5000
+    timeout_ms: 2000
+    retries: 3
+    
+  # 自动恢复
+  auto_recovery:
+    enable: true
+    max_retries: 3
+    backoff_ms: 1000
+    
+  # 降级策略
+  degradation:
+    enable: true
+    fallback_to_cpu: true
+    reduce_batch_size: true
+    increase_timeout: true
