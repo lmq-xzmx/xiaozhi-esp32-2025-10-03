@@ -1,0 +1,55 @@
+# VAD_SileroVAD 优化配置
+# 针对4核CPU + 7.5GB内存服务器的专用优化
+
+vad_service:
+  # 模型配置
+  model:
+    path: "/app/models/silero_vad_fp16.onnx"  # 优先使用FP16量化ONNX模型
+    fallback_path: "/app/models/silero_vad.pt"  # PyTorch备用模型
+    device: "auto"  # 自动选择GPU/CPU
+    
+  # 批处理优化
+  batch_processing:
+    batch_size: 32  # 从16提升到32，充分利用CPU并行能力
+    max_batch_wait_ms: 50  # 最大等待50ms收集批次
+    min_batch_size: 4  # 最小批次大小
+    
+  # 并发控制
+  concurrency:
+    max_concurrent: 48  # 从24提升到48，支持更多并发
+    worker_threads: 4  # 使用4个工作线程
+    queue_size: 200  # 请求队列大小
+    
+  # 性能优化
+  performance:
+    # ONNX Runtime优化
+    onnx_optimization:
+      graph_optimization_level: "all"
+      intra_op_num_threads: 2
+      inter_op_num_threads: 2
+      execution_mode: "parallel"
+      
+    # 内存优化
+    memory:
+      enable_memory_pool: true
+      max_memory_mb: 512  # 限制VAD服务最大内存使用
+      audio_buffer_size: 1024  # 音频缓冲区大小
+      
+    # 缓存优化
+    cache:
+      enable_redis_cache: true
+      cache_ttl: 300  # 5分钟缓存
+      max_cache_size: 10000  # 最大缓存条目
+      
+  # 资源限制
+  resources:
+    cpu_cores: 1.5  # 分配1.5个CPU核心
+    memory_limit: "1GB"  # 内存限制1GB
+    priority: "high"  # 高优先级调度
+
+# 监控配置
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: "INFO"
+  performance_tracking: true

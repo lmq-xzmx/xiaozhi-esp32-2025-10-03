@@ -1,0 +1,440 @@
+# Xiaozhi ESP32 Server - 100台设备优化配置
+# 基于性能评估报告的优化建议
+
+# VAD服务优化配置
+vad_service:
+  optimization:
+    # 模型优化
+    model:
+      quantization: true
+      onnx_runtime: true
+      fp16: true
+      model_path: "/app/models/silero_vad_optimized.onnx"
+    
+    # 批处理优化
+    batch_processing:
+      enabled: true
+      batch_size: 32
+      max_wait_time: 50  # ms
+      dynamic_batching: true
+      min_batch_size: 4
+    
+    # 并发优化
+    concurrency:
+      max_concurrent_requests: 24
+      worker_threads: 8
+      async_processing: true
+    
+    # 缓存优化
+    cache:
+      enabled: true
+      ttl: 300  # seconds
+      max_size: 10000
+      compression: true
+    
+    # 内存优化
+    memory:
+      pre_allocate: true
+      pool_size: 1024
+      gc_threshold: 0.8
+    
+    # 资源限制
+    resources:
+      cpu_request: "2000m"
+      cpu_limit: "4000m"
+      memory_request: "4Gi"
+      memory_limit: "8Gi"
+      gpu_request: "0.5"
+      gpu_limit: "0.5"
+
+# ASR服务优化配置
+asr_service:
+  optimization:
+    # 模型优化
+    model:
+      name: "SenseVoiceSmall"
+      quantization: "fp16"
+      streaming: true
+      chunk_size: 960  # 60ms at 16kHz
+      model_sharding: true
+      beam_size: 1  # 减少beam search以提高速度
+    
+    # 批处理优化
+    batch_processing:
+      enabled: true
+      batch_size: 8
+      max_wait_time: 100  # ms
+      dynamic_batching: true
+      priority_queue: true
+    
+    # 并发优化
+    concurrency:
+      max_concurrent_requests: 16
+      worker_processes: 4
+      gpu_workers: 2
+    
+    # 缓存优化
+    cache:
+      enabled: true
+      ttl: 600  # seconds
+      max_size: 5000
+      audio_fingerprint: true
+    
+    # GPU优化
+    gpu:
+      memory_fraction: 0.8
+      allow_growth: true
+      mixed_precision: true
+    
+    # 资源限制
+    resources:
+      cpu_request: "4000m"
+      cpu_limit: "8000m"
+      memory_request: "8Gi"
+      memory_limit: "16Gi"
+      gpu_request: "1"
+      gpu_limit: "1"
+
+# LLM服务优化配置
+llm_service:
+  optimization:
+    # 模型配置
+    models:
+      local:
+        enabled: true
+        model_name: "Qwen-7B-Chat"
+        quantization: "int4"
+        max_tokens: 2048
+        temperature: 0.7
+        top_p: 0.9
+      
+      cloud:
+        providers:
+          - name: "openai"
+            weight: 30
+            max_qps: 100
+          - name: "claude"
+            weight: 25
+            max_qps: 80
+          - name: "qwen"
+            weight: 25
+            max_qps: 120
+          - name: "baichuan"
+            weight: 20
+            max_qps: 100
+    
+    # 负载均衡
+    load_balancing:
+      strategy: "intelligent"
+      health_check_interval: 10
+      circuit_breaker:
+        failure_threshold: 5
+        recovery_timeout: 30
+    
+    # 缓存优化
+    cache:
+      enabled: true
+      ttl: 1800  # 30 minutes
+      max_size: 50000
+      semantic_cache: true
+      compression: true
+    
+    # 并发优化
+    concurrency:
+      max_concurrent_requests: 50
+      connection_pool_size: 20
+      timeout: 30
+    
+    # 资源限制
+    resources:
+      cpu_request: "2000m"
+      cpu_limit: "4000m"
+      memory_request: "4Gi"
+      memory_limit: "8Gi"
+
+# TTS服务优化配置
+tts_service:
+  optimization:
+    # 引擎配置
+    engines:
+      edge_tts:
+        enabled: true
+        weight: 40
+        voices: ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural"]
+      
+      azure_tts:
+        enabled: true
+        weight: 30
+        voices: ["zh-CN-XiaoxiaoNeural"]
+      
+      xunfei_tts:
+        enabled: true
+        weight: 20
+        voices: ["xiaoyan", "aisjiuxu"]
+      
+      local_tts:
+        enabled: true
+        weight: 10
+        model_path: "/app/models/tts_model"
+    
+    # 音频优化
+    audio:
+      format: "opus"
+      bitrate: 64000
+      sample_rate: 24000
+      compression_level: 6
+    
+    # 缓存优化
+    cache:
+      enabled: true
+      ttl: 3600  # 1 hour
+      max_size: 100000
+      file_cache: true
+      cache_path: "/app/cache/tts"
+      compression: true
+    
+    # 并发优化
+    concurrency:
+      max_concurrent_requests: 30
+      worker_threads: 12
+      streaming: true
+    
+    # 资源限制
+    resources:
+      cpu_request: "1000m"
+      cpu_limit: "2000m"
+      memory_request: "2Gi"
+      memory_limit: "4Gi"
+
+# Redis集群优化配置
+redis_cluster:
+  optimization:
+    # 集群配置
+    cluster:
+      nodes: 6
+      replicas: 1
+      slots: 16384
+    
+    # 内存优化
+    memory:
+      maxmemory: "8gb"
+      maxmemory_policy: "allkeys-lru"
+      hash_max_ziplist_entries: 512
+      hash_max_ziplist_value: 64
+    
+    # 持久化优化
+    persistence:
+      save_intervals:
+        - "900 1"
+        - "300 10"
+        - "60 10000"
+      aof_enabled: false  # 为了性能关闭AOF
+    
+    # 网络优化
+    network:
+      tcp_keepalive: 300
+      tcp_backlog: 511
+      timeout: 0
+    
+    # 资源限制
+    resources:
+      cpu_request: "1000m"
+      cpu_limit: "2000m"
+      memory_request: "8Gi"
+      memory_limit: "16Gi"
+      storage: "100Gi"
+
+# 智能负载均衡器配置
+intelligent_load_balancer:
+  optimization:
+    # 策略配置
+    strategies:
+      vad: "least_response_time"
+      asr: "resource_based"
+      llm: "intelligent"
+      tts: "least_connections"
+    
+    # 健康检查
+    health_check:
+      interval: 10  # seconds
+      timeout: 5
+      retries: 3
+      endpoints:
+        - "/health"
+        - "/metrics"
+    
+    # 熔断器配置
+    circuit_breaker:
+      failure_threshold: 5
+      recovery_timeout: 30
+      half_open_max_calls: 3
+    
+    # 队列管理
+    queue_management:
+      max_queue_size: 1000
+      priority_levels: 3
+      timeout: 30
+    
+    # 复杂度路由
+    complexity_routing:
+      enabled: true
+      thresholds:
+        simple: 0.3
+        medium: 0.7
+        complex: 1.0
+    
+    # 缓存感知
+    cache_awareness:
+      enabled: true
+      cache_hit_weight: 0.8
+      cache_miss_penalty: 0.2
+    
+    # 资源限制
+    resources:
+      cpu_request: "2000m"
+      cpu_limit: "4000m"
+      memory_request: "4Gi"
+      memory_limit: "8Gi"
+
+# 监控配置
+monitoring:
+  optimization:
+    # Prometheus配置
+    prometheus:
+      scrape_interval: "15s"
+      evaluation_interval: "15s"
+      retention: "30d"
+    
+    # 告警规则
+    alerts:
+      cpu_threshold: 80
+      memory_threshold: 85
+      response_time_threshold: 1.0
+      error_rate_threshold: 5
+    
+    # 指标收集
+    metrics:
+      - name: "request_duration"
+        type: "histogram"
+        buckets: [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+      
+      - name: "request_total"
+        type: "counter"
+        labels: ["service", "method", "status"]
+      
+      - name: "concurrent_requests"
+        type: "gauge"
+        labels: ["service"]
+      
+      - name: "cache_hit_rate"
+        type: "gauge"
+        labels: ["service", "cache_type"]
+    
+    # 日志配置
+    logging:
+      level: "INFO"
+      format: "json"
+      rotation: "daily"
+      retention: "7d"
+
+# 网络优化配置
+network:
+  optimization:
+    # HTTP/2配置
+    http2:
+      enabled: true
+      max_concurrent_streams: 100
+      initial_window_size: 65536
+    
+    # gRPC配置
+    grpc:
+      enabled: true
+      max_message_size: 4194304  # 4MB
+      keepalive_time: 30
+      keepalive_timeout: 5
+    
+    # 压缩配置
+    compression:
+      enabled: true
+      algorithms: ["gzip", "br"]
+      level: 6
+    
+    # 连接池配置
+    connection_pool:
+      max_connections: 100
+      max_idle_connections: 20
+      idle_timeout: 90
+    
+    # QoS配置
+    qos:
+      enabled: true
+      priority_classes:
+        - name: "high"
+          weight: 100
+        - name: "medium"
+          weight: 50
+        - name: "low"
+          weight: 10
+
+# 存储优化配置
+storage:
+  optimization:
+    # 存储类配置
+    storage_classes:
+      - name: "fast-ssd"
+        provisioner: "kubernetes.io/aws-ebs"
+        parameters:
+          type: "gp3"
+          iops: "3000"
+          throughput: "125"
+      
+      - name: "standard"
+        provisioner: "kubernetes.io/aws-ebs"
+        parameters:
+          type: "gp2"
+    
+    # 持久卷配置
+    persistent_volumes:
+      models:
+        size: "500Gi"
+        storage_class: "fast-ssd"
+        access_mode: "ReadOnlyMany"
+      
+      cache:
+        size: "200Gi"
+        storage_class: "fast-ssd"
+        access_mode: "ReadWriteMany"
+      
+      logs:
+        size: "100Gi"
+        storage_class: "standard"
+        access_mode: "ReadWriteOnce"
+
+# 安全配置
+security:
+  optimization:
+    # 网络策略
+    network_policies:
+      enabled: true
+      default_deny: true
+      allowed_namespaces: ["xiaozhi-system", "monitoring"]
+    
+    # RBAC配置
+    rbac:
+      enabled: true
+      service_accounts:
+        - name: "xiaozhi-services"
+          permissions: ["get", "list", "watch"]
+    
+    # 密钥管理
+    secrets:
+      encryption: true
+      rotation_interval: "30d"
+      providers: ["vault", "k8s-secrets"]
+    
+    # 资源配额
+    resource_quotas:
+      cpu: "200"
+      memory: "800Gi"
+      gpu: "20"
+      storage: "2Ti"

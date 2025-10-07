@@ -77,3 +77,31 @@ def get_logger(name: str = __name__) -> logging.Logger:
         Logger instance
     """
     return setup_logging(name)
+
+def build_module_string(module_name: str, class_name: str = None) -> str:
+    """
+    构建模块字符串
+    
+    Args:
+        module_name: 模块名称
+        class_name: 类名称（可选）
+        
+    Returns:
+        格式化的模块字符串
+    """
+    if class_name:
+        return f"{module_name}.{class_name}"
+    return module_name
+
+def create_connection_logger(connection_id: str) -> logging.Logger:
+    """
+    为连接创建专用的日志记录器
+    
+    Args:
+        connection_id: 连接ID
+        
+    Returns:
+        连接专用的日志记录器
+    """
+    logger_name = f"connection.{connection_id}"
+    return setup_logging(logger_name)

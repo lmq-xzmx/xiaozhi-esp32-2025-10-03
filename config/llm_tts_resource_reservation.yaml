@@ -1,0 +1,260 @@
+# LLM和TTS服务资源预留配置
+# 在VAD/ASR优化的基础上，为LLM和TTS预留充足资源
+
+# 资源预留策略
+resource_reservation:
+  # 总资源配置 (4核CPU + 7.5GB内存)
+  total_resources:
+    cpu_cores: 4
+    memory_gb: 7.5
+    
+  # VAD/ASR优化后的资源分配
+  allocated_resources:
+    vad_service:
+      cpu_cores: 1.5
+      memory_gb: 1.0
+      priority: "high"
+      
+    asr_service:
+      cpu_cores: 2.0
+      memory_gb: 2.5
+      priority: "high"
+      
+    system_services:  # 数据库、Redis、Web等
+      cpu_cores: 0.5
+      memory_gb: 1.0
+      priority: "medium"
+      
+  # LLM和TTS预留资源
+  reserved_resources:
+    llm_service:
+      cpu_cores: 0.5  # 预留0.5核给LLM
+      memory_gb: 1.5  # 预留1.5GB给LLM
+      priority: "medium"
+      max_concurrent: 20
+      
+    tts_service:
+      cpu_cores: 0.5  # 预留0.5核给TTS
+      memory_gb: 1.5  # 预留1.5GB给TTS
+      priority: "medium"
+      max_concurrent: 15
+
+# LLM服务配置
+llm_service:
+  # 资源限制
+  resources:
+    cpu_limit: "0.5"
+    memory_limit: "1.5G"
+    cpu_request: "0.3"
+    memory_request: "1G"
+    
+  # 并发控制
+  concurrency:
+    max_concurrent_requests: 20
+    queue_size: 50
+    request_timeout: 30  # 30秒超时
+    
+  # 缓存配置
+  cache:
+    enable_redis_cache: true
+    cache_ttl: 1800  # 30分钟
+    max_cache_size: 10000
+    semantic_cache: true
+    
+  # 负载均衡配置
+  load_balancing:
+    providers:
+      - name: "qwen"
+        weight: 40
+        max_qps: 50
+        api_key_env: "QWEN_API_KEY"
+        
+      - name: "baichuan"
+        weight: 30
+        max_qps: 40
+        api_key_env: "BAICHUAN_API_KEY"
+        
+      - name: "openai"
+        weight: 20
+        max_qps: 30
+        api_key_env: "OPENAI_API_KEY"
+        
+      - name: "local"
+        weight: 10
+        max_qps: 10
+        endpoint: "http://localhost:11434"
+        
+  # 熔断器配置
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 60
+    half_open_max_calls: 3
+
+# TTS服务配置
+tts_service:
+  # 资源限制
+  resources:
+    cpu_limit: "0.5"
+    memory_limit: "1.5G"
+    cpu_request: "0.3"
+    memory_request: "1G"
+    
+  # 并发控制
+  concurrency:
+    max_concurrent_requests: 15
+    queue_size: 40
+    request_timeout: 20  # 20秒超时
+    
+  # 音频缓存配置
+  cache:
+    enable_file_cache: true
+    cache_dir: "/tmp/tts_cache"
+    cache_ttl: 3600  # 1小时
+    max_cache_size_mb: 500
+    enable_redis_cache: true
+    
+  # TTS引擎配置
+  engines:
+    - name: "edge_tts"
+      weight: 50
+      enabled: true
+      free: true
+      
+    - name: "azure_tts"
+      weight: 30
+      enabled: true
+      api_key_env: "AZURE_TTS_KEY"
+      
+    - name: "xunfei_tts"
+      weight: 15
+      enabled: true
+      api_key_env: "XUNFEI_TTS_KEY"
+      
+    - name: "local_tts"
+      weight: 5
+      enabled: true
+      model_path: "/app/models/tts_model"
+      
+  # 音频优化配置
+  audio:
+    format: "mp3"
+    quality: "medium"
+    sample_rate: 22050
+    bit_rate: 64
+    enable_compression: true
+
+# 资源监控配置
+monitoring:
+  # CPU监控
+  cpu_monitoring:
+    warning_threshold: 80  # CPU使用率超过80%告警
+    critical_threshold: 90  # CPU使用率超过90%严重告警
+    check_interval: 30  # 30秒检查一次
+    
+  # 内存监控
+  memory_monitoring:
+    warning_threshold: 80  # 内存使用率超过80%告警
+    critical_threshold: 90  # 内存使用率超过90%严重告警
+    check_interval: 30
+    
+  # 服务健康监控
+  service_health:
+    llm_service:
+      health_check_url: "/health"
+      check_interval: 60
+      timeout: 10
+      
+    tts_service:
+      health_check_url: "/health"
+      check_interval: 60
+      timeout: 10
+
+# 过载保护策略
+overload_protection:
+  # CPU过载保护
+  cpu_overload:
+    threshold: 90
+    actions:
+      - "reduce_llm_concurrent"  # 减少LLM并发
+      - "reduce_tts_concurrent"  # 减少TTS并发
+      - "enable_request_throttling"  # 启用请求限流
+      
+  # 内存过载保护
+  memory_overload:
+    threshold: 85
+    actions:
+      - "clear_cache"  # 清理缓存
+      - "reduce_queue_size"  # 减少队列大小
+      - "reject_new_requests"  # 拒绝新请求
+      
+  # 服务降级策略
+  service_degradation:
+    llm_service:
+      - level: 1
+        action: "reduce_concurrent_to_15"
+        trigger: "cpu > 85%"
+        
+      - level: 2
+        action: "reduce_concurrent_to_10"
+        trigger: "cpu > 90%"
+        
+      - level: 3
+        action: "reject_requests"
+        trigger: "cpu > 95%"
+        
+    tts_service:
+      - level: 1
+        action: "reduce_concurrent_to_10"
+        trigger: "cpu > 85%"
+        
+      - level: 2
+        action: "reduce_concurrent_to_5"
+        trigger: "cpu > 90%"
+        
+      - level: 3
+        action: "reject_requests"
+        trigger: "cpu > 95%"
+
+# 自动扩缩容配置 (未来扩展)
+auto_scaling:
+  enable: false  # 当前单机部署，暂不启用
+  
+  # 扩容触发条件
+  scale_up_triggers:
+    - metric: "cpu_usage"
+      threshold: 80
+      duration: 300  # 持续5分钟
+      
+    - metric: "memory_usage"
+      threshold: 80
+      duration: 300
+      
+    - metric: "request_queue_length"
+      threshold: 100
+      duration: 60
+      
+  # 缩容触发条件
+  scale_down_triggers:
+    - metric: "cpu_usage"
+      threshold: 30
+      duration: 600  # 持续10分钟
+      
+    - metric: "memory_usage"
+      threshold: 40
+      duration: 600
+
+# 性能调优建议
+performance_tuning:
+  llm_service:
+    recommendations:
+      - "使用本地模型减少API延迟"
+      - "启用语义缓存提高命中率"
+      - "配置合适的超时时间"
+      - "使用连接池复用连接"
+      
+  tts_service:
+    recommendations:
+      - "优先使用免费的Edge TTS"
+      - "启用音频压缩减少带宽"
+      - "配置合适的缓存策略"
+      - "使用流式传输减少延迟"

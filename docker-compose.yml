@@ -1,6 +1,6 @@
-# 专用服务器激进优化配置
+# 保守优化配置
 # 适用于: 4核3GHz + 7.5GB内存的专用小智ESP32服务器
-# 优化目标: 支持3-4台设备稳定并发，消除卡顿现象
+# 优化目标: 支持10-12台设备稳定并发，保守资源预留策略
 
 version: '3.8'
 services:
@@ -49,19 +49,19 @@ services:
         target: /tmp
         tmpfs:
           size: 1G
-    # 激进的资源配置 - 专用服务器可以占用更多资源
+    # 保守优化的资源配置 - 为ASR服务预留充足资源
     deploy:
       resources:
         limits:
-          # 使用3.5核，保留0.5核给系统和其他容器
-          cpus: '3.5'
-          # 分配6GB内存，为SenseVoice预留充足空间
-          memory: 6G
-        reservations:
-          # 保证2.5核基础性能
+          # 限制CPU使用到2.5核，预留37.5%的CPU资源
           cpus: '2.5'
-          # 保证4GB基础内存
+          # 限制内存到4GB，预留50%的内存资源
           memory: 4G
+        reservations:
+          # 保证1.5核基础性能
+          cpus: '1.5'
+          # 保证2GB基础内存
+          memory: 2G
     # 专用服务器优化配置
     shm_size: 2g
     # CPU亲和性 - 绑定到前3个核心

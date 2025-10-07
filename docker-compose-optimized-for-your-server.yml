@@ -1,0 +1,232 @@
+# Docker Compose 针对您服务器的优化配置
+# 服务器配置: 4核CPU + 7.5GB内存
+# 目标: 支持60-80台设备，预留LLM/TTS资源，避免系统过载
+
+version: '3.8'
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  # 主服务器 - 优化资源分配
+  xiaozhi-esp32-server:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: xiaozhi-esp32-server
+    restart: always
+    networks:
+      - default
+    ports:
+      - "8000:8000"
+      - "8003:8003"
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
+      - PYTHONUNBUFFERED=1
+      
+      # VAD优化配置 - 保守设置
+      - VAD_MODEL_PATH=/opt/xiaozhi-esp32-server/models/silero_vad_fp16.onnx
+      - VAD_BATCH_SIZE=24
+      - VAD_MAX_CONCURRENT=36
+      - VAD_WORKER_THREADS=3
+      - VAD_INTRA_OP_THREADS=2
+      - VAD_INTER_OP_THREADS=2
+      - VAD_ENABLE_ONNX=true
+      - VAD_GRAPH_OPTIMIZATION=all
+      - VAD_ENABLE_MEMORY_PATTERN=true
+      - VAD_ENABLE_MEMORY_ARENA=true
+      
+      # ASR流式优化配置 - 平衡性能和资源
+      - ASR_MODEL_PATH=/opt/xiaozhi-esp32-server/models/SenseVoiceSmall
+      - ASR_BATCH_SIZE=8
+      - ASR_MAX_CONCURRENT=24
+      - ASR_WORKER_THREADS=2
+      - ASR_STREAM_WORKERS=1
+      - ENABLE_REALTIME=true
+      - CHUNK_SIZE=800
+      - CHUNK_DURATION_MS=50
+      - STREAM_BUFFER_SIZE=4096
+      - DYNAMIC_BATCHING=true
+      - BATCH_TIMEOUT_MS=25
+      - ENABLE_FP16=true
+      
+      # LLM服务配置 - 预留资源
+      - LLM_MAX_CONCURRENT=12  # 减少并发数
+      - LLM_QUEUE_SIZE=30
+      - LLM_REQUEST_TIMEOUT=25
+      - LLM_WORKER_THREADS=1   # 减少工作线程
+      - ENABLE_LLM_CACHE=true
+      - LLM_CACHE_TTL=1200
+      - SEMANTIC_CACHE=true
+      
+      # TTS服务配置 - 预留资源
+      - TTS_MAX_CONCURRENT=10  # 减少并发数
+      - TTS_QUEUE_SIZE=25
+      - TTS_REQUEST_TIMEOUT=15
+      - TTS_WORKER_THREADS=1   # 减少工作线程
+      - AUDIO_FORMAT=mp3
+      - AUDIO_QUALITY=medium
+      - SAMPLE_RATE=22050
+      - BIT_RATE=64
+      - ENABLE_COMPRESSION=true
+      - ENABLE_TTS_CACHE=true
+      - TTS_CACHE_TTL=2400
+      
+      # 系统资源控制 - 避免过载
+      - OMP_NUM_THREADS=3      # 限制OpenMP线程
+      - MKL_NUM_THREADS=3      # 限制MKL线程
+      - NUMBA_NUM_THREADS=3    # 限制Numba线程
+      - MALLOC_ARENA_MAX=2
+      - MALLOC_MMAP_THRESHOLD_=131072
+      
+      # SenseVoice专用优化
+      - SENSEVOICE_MODEL_CACHE=1
+      - SENSEVOICE_PRELOAD=1
+      - SENSEVOICE_BATCH_SIZE=8
+      - SENSEVOICE_MAX_CONCURRENT=24
+      
+      # 缓存配置
+      - REDIS_URL=redis://xiaozhi-esp32-server-redis:6379
+      - ENABLE_REDIS_CACHE=true
+      - CACHE_TTL=900
+      - MAX_CACHE_SIZE=15000
+      
+      # 监控配置
+      - ENABLE_METRICS=true
+      - LOG_LEVEL=INFO
+      - PERFORMANCE_TRACKING=true
+      
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
+      - ./models:/opt/xiaozhi-esp32-server/models
+      - ./config:/opt/xiaozhi-esp32-server/config
+      - /dev/shm:/dev/shm
+    depends_on:
+      xiaozhi-esp32-server-redis:
+        condition: service_healthy
+      xiaozhi-esp32-server-db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '3.2'    # 分配3.2核，预留0.8核给系统和其他服务
+          memory: 5.5G   # 分配5.5GB内存，预留2GB给系统
+        reservations:
+          cpus: '2.5'
+          memory: 4.5G
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web管理界面 - 轻量化配置
+  xiaozhi-esp32-server-web:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:web_latest
+    container_name: xiaozhi-esp32-server-web
+    restart: always
+    networks:
+      - default
+    depends_on:
+      xiaozhi-esp32-server-db:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=mysql://xiaozhi:xiaozhi_password@xiaozhi-esp32-server-db:3306/xiaozhi_db
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'    # 减少Web服务资源
+          memory: 400M
+        reservations:
+          cpus: '0.2'
+          memory: 300M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # 数据库 - 优化配置
+  xiaozhi-esp32-server-db:
+    image: mysql:8.0
+    container_name: xiaozhi-esp32-server-db
+    restart: always
+    networks:
+      - default
+    environment:
+      - MYSQL_ROOT_PASSWORD=xiaozhi_root_password
+      - MYSQL_DATABASE=xiaozhi_db
+      - MYSQL_USER=xiaozhi
+      - MYSQL_PASSWORD=xiaozhi_password
+      - TZ=Asia/Shanghai
+    volumes:
+      - xiaozhi_db_data:/var/lib/mysql
+      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'    # 减少数据库资源
+          memory: 400M
+        reservations:
+          cpus: '0.3'
+          memory: 300M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "xiaozhi", "-pxiaozhi_password"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis - 轻量化配置
+  xiaozhi-esp32-server-redis:
+    image: redis:7-alpine
+    container_name: xiaozhi-esp32-server-redis
+    restart: always
+    networks:
+      - default
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --tcp-keepalive 60
+      --timeout 300
+    volumes:
+      - xiaozhi_redis_data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 200M
+        reservations:
+          cpus: '0.05'
+          memory: 150M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  xiaozhi_db_data:
+    driver: local
+  xiaozhi_redis_data:
+    driver: local

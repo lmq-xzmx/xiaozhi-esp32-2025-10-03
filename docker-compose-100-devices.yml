@@ -1,0 +1,289 @@
+version: '3.8'
+
+services:
+  # 负载均衡器
+  nginx-lb:
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-100-devices.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - gateway-1
+      - gateway-2
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # API网关集群 (2个实例)
+  gateway-1:
+    image: xiaozhi-esp32-server:latest
+    environment:
+      - SERVICE_MODE=gateway
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+      - ASR_SERVICE_URL=http://asr-service:8001
+      - TTS_SERVICE_URL=http://tts-service:8002
+      - LLM_SERVICE_URL=http://llm-service:8003
+      - VAD_SERVICE_URL=http://vad-service:8004
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.5'
+          memory: 1.5G
+
+  gateway-2:
+    image: xiaozhi-esp32-server:latest
+    environment:
+      - SERVICE_MODE=gateway
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+      - ASR_SERVICE_URL=http://asr-service:8001
+      - TTS_SERVICE_URL=http://tts-service:8002
+      - LLM_SERVICE_URL=http://llm-service:8003
+      - VAD_SERVICE_URL=http://vad-service:8004
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.5'
+          memory: 1.5G
+
+  # VAD服务集群 (2个实例)
+  vad-service-1:
+    image: xiaozhi-vad-service:latest
+    environment:
+      - SERVICE_MODE=vad
+      - VAD_MODEL=silero-vad
+      - BATCH_SIZE=8
+      - MAX_CONCURRENT=16
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+
+  vad-service-2:
+    image: xiaozhi-vad-service:latest
+    environment:
+      - SERVICE_MODE=vad
+      - VAD_MODEL=silero-vad
+      - BATCH_SIZE=8
+      - MAX_CONCURRENT=16
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+
+  # ASR服务集群 (3个实例)
+  asr-service-1:
+    image: xiaozhi-asr-service:latest
+    environment:
+      - SERVICE_MODE=asr
+      - ASR_MODEL=SenseVoiceSmall
+      - BATCH_SIZE=4
+      - MAX_CONCURRENT=8
+      - CHUNK_SIZE=512
+      - ENABLE_REALTIME=true
+      - MODEL_CACHE=true
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    volumes:
+      - ./models:/app/models
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 3G
+
+  asr-service-2:
+    image: xiaozhi-asr-service:latest
+    environment:
+      - SERVICE_MODE=asr
+      - ASR_MODEL=SenseVoiceSmall
+      - BATCH_SIZE=4
+      - MAX_CONCURRENT=8
+      - CHUNK_SIZE=512
+      - ENABLE_REALTIME=true
+      - MODEL_CACHE=true
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    volumes:
+      - ./models:/app/models
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 3G
+
+  asr-service-3:
+    image: xiaozhi-asr-service:latest
+    environment:
+      - SERVICE_MODE=asr
+      - ASR_MODEL=SenseVoiceSmall
+      - BATCH_SIZE=4
+      - MAX_CONCURRENT=8
+      - CHUNK_SIZE=512
+      - ENABLE_REALTIME=true
+      - MODEL_CACHE=true
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    volumes:
+      - ./models:/app/models
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 3G
+
+  # TTS服务集群 (2个实例)
+  tts-service-1:
+    image: xiaozhi-tts-service:latest
+    environment:
+      - SERVICE_MODE=tts
+      - TTS_MODEL=edge-tts
+      - BATCH_SIZE=6
+      - MAX_CONCURRENT=12
+      - AUDIO_CACHE=true
+      - CACHE_TTL=3600
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.5'
+          memory: 1.5G
+
+  tts-service-2:
+    image: xiaozhi-tts-service:latest
+    environment:
+      - SERVICE_MODE=tts
+      - TTS_MODEL=edge-tts
+      - BATCH_SIZE=6
+      - MAX_CONCURRENT=12
+      - AUDIO_CACHE=true
+      - CACHE_TTL=3600
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.5'
+          memory: 1.5G
+
+  # LLM服务 (代理服务)
+  llm-service:
+    image: xiaozhi-llm-service:latest
+    environment:
+      - SERVICE_MODE=llm
+      - LLM_PROVIDER=openai
+      - MAX_CONCURRENT=20
+      - RESPONSE_CACHE=true
+      - CACHE_TTL=1800
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Redis集群
+  xiaozhi-redis-cluster:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --save 60 1000
+    volumes:
+      - xiaozhi-redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2.5G
+        reservations:
+          cpus: '0.5'
+          memory: 2G
+
+  # 数据库集群
+  xiaozhi-esp32-server-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: xiaozhi
+      MYSQL_DATABASE: xiaozhi
+      MYSQL_USER: xiaozhi
+      MYSQL_PASSWORD: xiaozhi
+    volumes:
+      - xiaozhi-mysql-data:/var/lib/mysql
+      - ./mysql-100-devices.cnf:/etc/mysql/conf.d/custom.cnf
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # 监控服务
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus-100-devices.yml:/etc/prometheus/prometheus.yml
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  xiaozhi-mysql-data:
+  xiaozhi-redis-data:
+  grafana-data:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

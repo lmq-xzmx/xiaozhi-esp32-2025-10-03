@@ -1,0 +1,264 @@
+# 优化的Docker Compose配置
+# 专门针对VAD和ASR优化，预留LLM和TTS资源
+# 适用于: 4核CPU + 7.5GB内存服务器
+
+version: '3.8'
+services:
+  # 主服务 - 保守配置，为VAD/ASR优化预留资源
+  xiaozhi-esp32-server:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: xiaozhi-esp32-server
+    depends_on:
+      - xiaozhi-esp32-server-db
+      - xiaozhi-esp32-server-redis
+      - vad-service
+      - asr-service
+    restart: always
+    networks:
+      - default
+    ports:
+      - "8000:8000"
+      - "8003:8003"  # TTS服务端口
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      # 为LLM和TTS预留的环境变量
+      - VAD_SERVICE_URL=http://vad-service:8004
+      - ASR_SERVICE_URL=http://asr-service:8001
+      - LLM_MAX_CONCURRENT=20  # LLM并发限制
+      - TTS_MAX_CONCURRENT=15  # TTS并发限制
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
+      - /dev/shm:/dev/shm
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'  # 减少到1核，为VAD/ASR让出资源
+          memory: 1.5G  # 减少到1.5GB，为VAD/ASR让出资源
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    shm_size: 512m
+    cpuset: "3"  # 绑定到第4个核心
+
+  # VAD服务 - 独立部署，优化配置
+  vad-service:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: vad-service
+    command: ["python", "/opt/xiaozhi-esp32-server/services/vad_service.py"]
+    depends_on:
+      - xiaozhi-esp32-server-redis
+    restart: always
+    networks:
+      - default
+    ports:
+      - "8004:8004"
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
+      - PYTHONUNBUFFERED=1
+      # VAD优化配置
+      - VAD_MODEL_PATH=/app/models/silero_vad_fp16.onnx
+      - VAD_BATCH_SIZE=32
+      - VAD_MAX_CONCURRENT=48
+      - VAD_WORKER_THREADS=4
+      - REDIS_URL=redis://xiaozhi-esp32-server-redis:6379
+      # ONNX Runtime优化
+      - OMP_NUM_THREADS=2
+      - MKL_NUM_THREADS=2
+      - ONNXRUNTIME_OPTIMIZATION_LEVEL=all
+    volumes:
+      - ./models:/app/models
+      - ./config/vad_optimized_config.yaml:/app/config/vad_config.yaml
+      - /dev/shm:/dev/shm
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'  # 分配1.5核给VAD
+          memory: 1G   # 分配1GB内存给VAD
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    shm_size: 256m
+    cpuset: "0"  # 绑定到第1个核心
+
+  # ASR服务 - 独立部署，流式处理优化
+  asr-service:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: asr-service
+    command: ["python", "/opt/xiaozhi-esp32-server/services/asr_service.py"]
+    depends_on:
+      - xiaozhi-esp32-server-redis
+    restart: always
+    networks:
+      - default
+    ports:
+      - "8001:8001"
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - PYTHONIOENCODING=utf-8
+      - PYTHONUTF8=1
+      - PYTHONUNBUFFERED=1
+      # ASR流式处理优化配置
+      - ASR_MODEL_PATH=/app/models/SenseVoiceSmall_fp16
+      - ASR_BATCH_SIZE=16
+      - ASR_MAX_CONCURRENT=32
+      - ASR_WORKER_THREADS=3
+      - ASR_STREAM_WORKERS=2
+      - ENABLE_REALTIME=true
+      - CHUNK_SIZE=1024
+      - CHUNK_DURATION_MS=64
+      - REDIS_URL=redis://xiaozhi-esp32-server-redis:6379
+      # 模型优化
+      - SENSEVOICE_MODEL_CACHE=1
+      - SENSEVOICE_PRELOAD=1
+      - ENABLE_FP16=true
+    volumes:
+      - ./models:/app/models
+      - ./config/asr_streaming_config.yaml:/app/config/asr_config.yaml
+      - /dev/shm:/dev/shm
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'  # 分配2核给ASR（流式处理需要更多资源）
+          memory: 2.5G # 分配2.5GB内存给ASR
+        reservations:
+          cpus: '1.5'
+          memory: 2G
+    shm_size: 1g
+    cpuset: "1-2"  # 绑定到第2、3个核心
+
+  # Web管理界面 - 轻量化配置
+  xiaozhi-esp32-server-web:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:web_latest
+    container_name: xiaozhi-esp32-server-web
+    restart: always
+    networks:
+      - default
+    depends_on:
+      xiaozhi-esp32-server-db:
+        condition: service_healthy
+      xiaozhi-esp32-server-redis:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_DATASOURCE_DRUID_USERNAME=root
+      - SPRING_DATASOURCE_DRUID_PASSWORD=123456
+      - SPRING_DATA_REDIS_HOST=xiaozhi-esp32-server-redis
+      - SPRING_DATA_REDIS_PASSWORD=
+      - SPRING_DATA_REDIS_PORT=6379
+      - JAVA_OPTS=-Xms128m -Xmx256m -XX:+UseG1GC
+    volumes:
+      - ./uploadfile:/uploadfile
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'  # 减少Web服务资源
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    cpuset: "3"
+
+  # 数据库 - 优化配置
+  xiaozhi-esp32-server-db:
+    image: mysql:8.0
+    container_name: xiaozhi-esp32-server-db
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=128M
+      --innodb-log-file-size=32M
+      --innodb-flush-log-at-trx-commit=2
+      --max-connections=50
+      --tmp-table-size=16M
+      --max-heap-table-size=16M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    networks:
+      - default
+    expose:
+      - 3306
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    environment:
+      - TZ=Asia/Shanghai
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=xiaozhi_esp32_server
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'  # 减少数据库资源
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    cpuset: "3"
+
+  # Redis - 高性能配置
+  xiaozhi-esp32-server-redis:
+    image: redis:7-alpine
+    container_name: xiaozhi-esp32-server-redis
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --tcp-keepalive 60
+      --tcp-backlog 511
+    expose:
+      - 6379
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 768M  # 增加Redis内存，支持更多缓存
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+    cpuset: "3"
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+
+# 资源分配总结:
+# CPU分配 (4核总计):
+#   - VAD服务: 1.5核 (37.5%)
+#   - ASR服务: 2.0核 (50%)  
+#   - 主服务: 1.0核 (25%) - 预留给LLM/TTS
+#   - 其他服务: 0.5核 (12.5%)
+#   - 系统预留: 0核 (0%) - 紧凑配置
+#
+# 内存分配 (7.5GB总计):
+#   - VAD服务: 1GB (13.3%)
+#   - ASR服务: 2.5GB (33.3%)
+#   - 主服务: 1.5GB (20%) - 预留给LLM/TTS  
+#   - Redis: 768MB (10.2%)
+#   - 其他服务: 768MB (10.2%)
+#   - 系统预留: 1GB (13.3%)

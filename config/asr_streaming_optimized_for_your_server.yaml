@@ -1,0 +1,129 @@
+# ASR_FunASR 针对您服务器的流式处理优化配置
+# 服务器配置: 4核CPU + 7.5GB内存
+# 目标: 支持60-80台设备流式ASR，预留LLM/TTS资源
+
+asr_service:
+  # 模型配置 - 使用小模型和量化
+  model:
+    name: "SenseVoiceSmall"  # 使用小模型减少内存占用
+    primary_path: "/opt/xiaozhi-esp32-server/models/SenseVoiceSmall_fp16"  # FP16量化版本
+    fallback_path: "/opt/xiaozhi-esp32-server/models/SenseVoiceSmall"      # 原始模型备用
+    device: "cpu"  # 使用CPU，为LLM预留GPU资源
+    enable_fp16: true  # 启用FP16量化
+    enable_jit: true   # 启用JIT编译优化
+    
+  # 流式处理配置 - 优化延迟和吞吐量
+  streaming:
+    enable_realtime: true  # 启用实时流式处理
+    chunk_size: 800  # 音频块大小(样本数)，50ms@16kHz，平衡延迟和质量
+    chunk_duration_ms: 50  # 每块50ms音频
+    overlap_ms: 10  # 10ms重叠，减少边界效应
+    max_silence_ms: 400  # 最大静音时长
+    
+    # 流式缓冲区 - 内存优化
+    buffer:
+      max_buffer_size: 4096  # 最大缓冲区大小
+      min_process_size: 400  # 最小处理大小
+      flush_threshold: 1600  # 刷新阈值
+      buffer_pool_size: 32   # 缓冲池大小
+      
+  # 批处理优化 - 适应CPU性能
+  batch_processing:
+    batch_size: 8  # 适中的批次大小，平衡内存和性能
+    max_batch_wait_ms: 25  # 25ms等待时间，确保低延迟
+    min_batch_size: 2  # 最小批次大小
+    dynamic_batching: true  # 动态批处理
+    
+  # 并发控制 - 保守配置
+  concurrency:
+    max_concurrent: 24  # 最大并发数
+    worker_threads: 2  # 使用2个工作线程
+    stream_workers: 1  # 1个专用流式处理工作线程
+    queue_size: 80  # 请求队列大小
+    priority_queues: 2  # 2个优先级队列
+    
+  # 性能优化
+  performance:
+    # 模型优化
+    model_optimization:
+      enable_model_cache: true
+      preload_model: true
+      warmup_iterations: 3
+      enable_onnx: false  # 暂时禁用ONNX，使用PyTorch
+      
+    # 内存优化 - 严格控制
+    memory:
+      max_memory_mb: 1800  # 限制ASR服务最大内存1.8GB
+      audio_buffer_pool_size: 32  # 音频缓冲池
+      result_cache_size: 500  # 结果缓存大小
+      enable_memory_mapping: true
+      
+    # 音频预处理优化
+    audio_processing:
+      enable_vad_filter: true  # 启用VAD过滤
+      noise_reduction: false  # 禁用噪声降低以节省CPU
+      auto_gain_control: false  # 禁用自动增益控制
+      
+    # 缓存优化
+    cache:
+      enable_redis_cache: true
+      cache_ttl: 900  # 15分钟缓存
+      max_cache_size: 20000  # 缓存条目
+      semantic_cache: true  # 语义缓存
+      cache_compression: true
+      
+  # 流式处理特定配置
+  realtime:
+    # 延迟优化
+    latency:
+      target_latency_ms: 150  # 目标延迟150ms
+      max_latency_ms: 300  # 最大延迟300ms
+      
+    # 质量控制
+    quality:
+      min_confidence: 0.7  # 最小置信度
+      enable_partial_results: true  # 启用部分结果
+      partial_result_interval_ms: 80  # 部分结果间隔
+      
+    # 连接管理
+    connection:
+      max_connections: 30  # 最大WebSocket连接数
+      heartbeat_interval: 25  # 心跳间隔(秒)
+      connection_timeout: 180  # 连接超时(秒)
+      
+  # 资源限制 - 为LLM/TTS预留资源
+  resources:
+    cpu_cores: 1.8  # 分配1.8个CPU核心
+    memory_limit: "2GB"  # 内存限制2GB
+    priority: "high"  # 高优先级调度
+    
+# WebSocket配置
+websocket:
+  enable: true
+  port: 8001
+  max_message_size: 524288  # 512KB最大消息大小
+  ping_interval: 20
+  ping_timeout: 8
+  
+# 监控配置
+monitoring:
+  enable_metrics: true
+  metrics_port: 9091
+  log_level: "INFO"
+  performance_tracking: true
+  latency_tracking: true
+  memory_tracking: true
+  
+# 错误处理
+error_handling:
+  max_retries: 2
+  retry_delay_ms: 80
+  circuit_breaker:
+    failure_threshold: 4
+    recovery_timeout: 20
+    
+# 预热配置
+warmup:
+  enable: true
+  warmup_audio_samples: 3
+  warmup_timeout: 45

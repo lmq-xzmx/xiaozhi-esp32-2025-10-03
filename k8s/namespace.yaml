@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xiaozhi-system
+  labels:
+    name: xiaozhi-system
+    environment: production
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: xiaozhi-quota
+  namespace: xiaozhi-system
+spec:
+  hard:
+    requests.cpu: "50"
+    requests.memory: 100Gi
+    limits.cpu: "100"
+    limits.memory: 200Gi
+    persistentvolumeclaims: "20"
+    services: "20"
+    secrets: "10"
+    configmaps: "10"

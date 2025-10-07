@@ -1,0 +1,74 @@
+# VAD_SileroVAD 针对您服务器的专用优化配置
+# 服务器配置: 4核CPU + 7.5GB内存
+# 目标: 支持80-100台设备并发，预留LLM/TTS资源
+
+vad_service:
+  # 模型配置 - 优先使用量化模型
+  model:
+    primary_path: "/opt/xiaozhi-esp32-server/models/silero_vad_fp16.onnx"  # FP16量化ONNX模型
+    fallback_path: "/opt/xiaozhi-esp32-server/models/silero_vad.onnx"     # 原始ONNX模型
+    pytorch_fallback: "/opt/xiaozhi-esp32-server/models/silero_vad.pt"    # PyTorch备用
+    device: "cpu"  # 强制使用CPU，为LLM预留GPU资源
+    
+  # 批处理优化 - 针对4核CPU调优
+  batch_processing:
+    batch_size: 24  # 适中的批次大小，平衡延迟和吞吐量
+    max_batch_wait_ms: 40  # 40ms等待时间，确保低延迟
+    min_batch_size: 3  # 最小批次
+    dynamic_batching: true  # 动态调整批次大小
+    
+  # 并发控制 - 保守配置避免过载
+  concurrency:
+    max_concurrent: 36  # 适中的并发数
+    worker_threads: 3  # 使用3个工作线程，预留1核给系统
+    queue_size: 120  # 请求队列
+    priority_levels: 2  # 2个优先级队列
+    
+  # ONNX Runtime优化 - 针对Intel CPU
+  onnx_optimization:
+    graph_optimization_level: "all"
+    execution_mode: "parallel"
+    intra_op_num_threads: 2  # 每个操作内部线程
+    inter_op_num_threads: 2  # 操作间并行线程
+    enable_cpu_mem_arena: true
+    enable_mem_pattern: true
+    
+  # 内存优化 - 严格控制内存使用
+  memory:
+    max_memory_mb: 400  # 限制VAD最大内存400MB
+    audio_buffer_size: 512  # 音频缓冲区
+    model_cache_size: 1  # 只缓存1个模型实例
+    enable_memory_pool: true
+    
+  # 缓存策略 - 提高命中率
+  cache:
+    enable_redis_cache: true
+    cache_ttl: 180  # 3分钟缓存
+    max_cache_size: 5000  # 缓存条目
+    cache_compression: true  # 启用压缩节省内存
+    
+  # 性能监控
+  monitoring:
+    enable_metrics: true
+    metrics_interval: 30  # 30秒统计间隔
+    log_level: "INFO"
+    
+  # 资源限制 - 为LLM/TTS预留资源
+  resources:
+    cpu_cores: 1.0  # 分配1个CPU核心
+    memory_limit: "500MB"  # 内存限制500MB
+    priority: "normal"  # 普通优先级
+    
+# 错误处理和恢复
+error_handling:
+  max_retries: 2
+  retry_delay_ms: 50
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_timeout: 15
+    
+# 预热配置
+warmup:
+  enable: true
+  warmup_requests: 5
+  warmup_timeout: 30

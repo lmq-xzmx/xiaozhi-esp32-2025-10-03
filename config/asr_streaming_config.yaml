@@ -1,0 +1,116 @@
+# ASR_FunASR 流式处理优化配置
+# 针对4核CPU + 7.5GB内存服务器的专用优化
+
+asr_service:
+  # 模型配置
+  model:
+    name: "SenseVoiceSmall"  # 使用小模型减少内存占用
+    path: "/app/models/SenseVoiceSmall_fp16"  # FP16量化版本
+    fallback_path: "/app/models/SenseVoiceSmall"  # 原始模型备用
+    device: "auto"  # 自动选择GPU/CPU
+    enable_fp16: true  # 启用FP16量化
+    
+  # 流式处理配置
+  streaming:
+    enable_realtime: true  # 启用实时流式处理
+    chunk_size: 1024  # 音频块大小(样本数)，从512提升到1024
+    chunk_duration_ms: 64  # 每块64ms音频
+    overlap_ms: 16  # 16ms重叠，确保连续性
+    max_silence_ms: 500  # 最大静音时长
+    
+    # 流式缓冲区
+    buffer:
+      max_buffer_size: 8192  # 最大缓冲区大小
+      min_process_size: 512  # 最小处理大小
+      flush_threshold: 2048  # 刷新阈值
+      
+  # 批处理优化
+  batch_processing:
+    batch_size: 16  # 从8提升到16，充分利用CPU
+    max_batch_wait_ms: 30  # 最大等待30ms收集批次
+    min_batch_size: 2  # 最小批次大小
+    dynamic_batching: true  # 动态批处理
+    
+  # 并发控制
+  concurrency:
+    max_concurrent: 32  # 从16提升到32
+    worker_threads: 3  # 使用3个工作线程
+    stream_workers: 2  # 专用流式处理工作线程
+    queue_size: 150  # 请求队列大小
+    priority_queues: 3  # 3个优先级队列
+    
+  # 性能优化
+  performance:
+    # 模型优化
+    model_optimization:
+      enable_model_cache: true
+      preload_model: true
+      warmup_iterations: 3
+      
+    # 内存优化
+    memory:
+      max_memory_mb: 2048  # 限制ASR服务最大内存使用2GB
+      audio_buffer_pool_size: 64  # 音频缓冲池大小
+      result_cache_size: 1000  # 结果缓存大小
+      
+    # 音频预处理优化
+    audio_processing:
+      enable_vad_filter: true  # 启用VAD过滤
+      noise_reduction: true  # 噪声降低
+      auto_gain_control: true  # 自动增益控制
+      
+    # 缓存优化
+    cache:
+      enable_redis_cache: true
+      cache_ttl: 1800  # 30分钟缓存
+      max_cache_size: 50000  # 最大缓存条目
+      semantic_cache: true  # 语义缓存
+      
+  # 流式处理特定配置
+  realtime:
+    # 延迟优化
+    latency:
+      target_latency_ms: 200  # 目标延迟200ms
+      max_latency_ms: 500  # 最大延迟500ms
+      
+    # 质量控制
+    quality:
+      min_confidence: 0.6  # 最小置信度
+      enable_partial_results: true  # 启用部分结果
+      partial_result_interval_ms: 100  # 部分结果间隔
+      
+    # 连接管理
+    connection:
+      max_connections: 50  # 最大WebSocket连接数
+      heartbeat_interval: 30  # 心跳间隔(秒)
+      connection_timeout: 300  # 连接超时(秒)
+      
+  # 资源限制
+  resources:
+    cpu_cores: 2.0  # 分配2个CPU核心
+    memory_limit: "2.5GB"  # 内存限制2.5GB
+    priority: "high"  # 高优先级调度
+    
+# WebSocket流式处理配置
+websocket:
+  enable: true
+  port: 8001
+  max_message_size: 1048576  # 1MB最大消息大小
+  ping_interval: 20
+  ping_timeout: 10
+  
+# 监控配置
+monitoring:
+  enable_metrics: true
+  metrics_port: 9091
+  log_level: "INFO"
+  performance_tracking: true
+  latency_tracking: true
+  
+# 错误处理
+error_handling:
+  max_retries: 3
+  retry_delay_ms: 100
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 30

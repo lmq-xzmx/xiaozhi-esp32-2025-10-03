@@ -1,0 +1,56 @@
+# MySQL 针对您服务器的优化配置
+# 服务器配置: 4核CPU + 7.5GB内存
+# MySQL分配: 0.4核CPU + 400MB内存
+
+[mysqld]
+# 基础配置
+port = 3306
+bind-address = 0.0.0.0
+default-storage-engine = InnoDB
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# 内存优化 - 针对400MB限制
+innodb_buffer_pool_size = 200M      # 缓冲池大小
+innodb_log_buffer_size = 8M         # 日志缓冲区
+key_buffer_size = 16M               # MyISAM键缓冲区
+table_open_cache = 400              # 表缓存
+thread_cache_size = 8               # 线程缓存
+
+# 连接优化
+max_connections = 50                # 最大连接数
+max_connect_errors = 100
+connect_timeout = 10
+wait_timeout = 600
+interactive_timeout = 600
+
+# InnoDB优化
+innodb_file_per_table = 1
+innodb_flush_log_at_trx_commit = 2  # 性能优化
+innodb_log_file_size = 32M
+innodb_log_files_in_group = 2
+innodb_flush_method = O_DIRECT
+innodb_lock_wait_timeout = 50
+
+# 查询优化
+query_cache_type = 1
+query_cache_size = 32M
+query_cache_limit = 2M
+tmp_table_size = 32M
+max_heap_table_size = 32M
+
+# 日志配置
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+log_queries_not_using_indexes = 0
+
+# 安全配置
+skip-name-resolve
+local-infile = 0
+
+[mysql]
+default-character-set = utf8mb4
+
+[client]
+default-character-set = utf8mb4
