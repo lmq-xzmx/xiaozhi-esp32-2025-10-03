@@ -82,16 +82,25 @@ class TTSResponse(BaseModel):
     engine: str
 
 class TTSCache:
-    """TTS音频缓存管理器"""
+    """TTS音频缓存管理器 - P0优化版本"""
     
     def __init__(self, redis_client, cache_dir: str = "/tmp/tts_cache"):
         self.redis_client = redis_client
         self.cache_dir = cache_dir
-        self.cache_ttl = 7200  # 2小时
+        self.cache_ttl = 14400  # P0优化：4小时TTL
         self.max_file_size = 10 * 1024 * 1024  # 10MB
+        self.compression_enabled = True  # P0优化：启用压缩
         
         # 创建缓存目录
         os.makedirs(cache_dir, exist_ok=True)
+        
+        # P0优化：预缓存常用短语
+        self.common_phrases = {
+            "greetings": ["你好", "早上好", "下午好", "晚上好", "欢迎使用", "很高兴为您服务"],
+            "responses": ["好的", "明白了", "没问题", "请稍等", "正在处理", "已经完成", "收到", "了解"],
+            "errors": ["抱歉，我没听清", "请重新说一遍", "网络连接异常", "系统繁忙，请稍后再试", "语音识别失败"],
+            "confirmations": ["是的", "不是", "确认", "取消", "继续", "停止"]
+        }
     
     def generate_cache_key(self, text: str, voice_id: str, speed: float, pitch: float, volume: float) -> str:
         """生成缓存键"""
@@ -171,6 +180,60 @@ class TTSCache:
                         logger.info(f"清理无效缓存: {key}")
         except Exception as e:
             logger.error(f"清理缓存失败: {e}")
+    
+    async def preload_common_cache(self, engine):
+        """P0优化：预加载常用短语缓存"""
+        try:
+            logger.info("开始预加载TTS常用短语缓存...")
+            preload_count = 0
+            
+            # 默认语音配置
+            default_voices = ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural"]
+            
+            for category, phrases in self.common_phrases.items():
+                for phrase in phrases:
+                    for voice_id in default_voices:
+                        try:
+                            # 检查是否已缓存
+                            cache_key = self.generate_cache_key(phrase, voice_id, 1.0, 0.0, 1.0)
+                            cached = await self.get_cached_audio(cache_key)
+                            
+                            if not cached:
+                                # 生成音频
+                                audio_data = await engine.synthesize(phrase, voice_id)
+                                
+                                # 缓存音频
+                                metadata = {
+                                    "duration": len(audio_data) / 48000,  # 估算时长
+                                    "format": "mp3",
+                                    "sample_rate": 24000,
+                                    "voice_id": voice_id,
+                                    "engine": "edge_tts",
+                                    "category": category,
+                                    "preloaded": True
+                                }
+                                await self.cache_audio(cache_key, audio_data, metadata)
+                                preload_count += 1
+                                
+                                # 避免过快请求
+                                await asyncio.sleep(0.1)
+                                
+                        except Exception as e:
+                            logger.warning(f"预缓存失败 '{phrase}' ({voice_id}): {e}")
+                            continue
+            
+            logger.info(f"TTS预缓存完成，共预生成 {preload_count} 个音频文件")
+            
+        except Exception as e:
+            logger.error(f"TTS预缓存失败: {e}")
+    
+    def is_common_phrase(self, text: str) -> bool:
+        """检查是否为常用短语"""
+        text = text.strip()
+        for phrases in self.common_phrases.values():
+            if text in phrases:
+                return True
+        return False
 
 class EdgeTTSEngine:
     """Edge TTS引擎"""
@@ -231,27 +294,62 @@ class EdgeTTSEngine:
             raise
 
 class TTSLoadBalancer:
-    """TTS负载均衡器"""
+    """TTS负载均衡器 - P0优化版本"""
     
     def __init__(self):
         self.engines = {
             TTSEngine.EDGE_TTS: EdgeTTSEngine()
         }
+        
+        # P0优化：本地优先权重配置
+        # 注意：TTS引擎配置现在通过 http://182.44.78.40:8002/#/model-config 统一管理
+        self.engine_weights = {
+            TTSEngine.EDGE_TTS: 1.0,      # 100%使用本地Edge TTS
+        }
+        
+        # P0优化：引擎优先级配置
+        self.engine_priority = {
+            TTSEngine.EDGE_TTS: 1,        # 最高优先级
+        }
+        
+        # P0优化：引擎超时配置
+        self.engine_timeouts = {
+            TTSEngine.EDGE_TTS: 2,        # 2秒超时
+        }
+        
         self.engine_stats = {
             TTSEngine.EDGE_TTS: {
                 "total_requests": 0,
                 "total_errors": 0,
                 "total_time": 0.0,
                 "current_load": 0,
-                "max_concurrent": 10
+                "max_concurrent": 10,
+                "timeout_count": 0,        # P0新增：超时统计
+                "error_count": 0           # P0新增：错误统计
             }
         }
     
-    def select_engine(self, voice_id: str) -> TTSEngine:
-        """选择TTS引擎"""
-        # 简化实现：根据voice_id选择引擎
-        if voice_id.startswith("zh-CN-"):
-            return TTSEngine.EDGE_TTS
+    def select_engine(self, voice_id: str, text_length: int = 0) -> TTSEngine:
+        """P0优化：智能选择最佳TTS引擎"""
+        # 1. 优先使用本地Edge TTS（80%权重）
+        if text_length <= 500:  # 短文本优先本地
+            edge_stats = self.engine_stats[TTSEngine.EDGE_TTS]
+            if edge_stats.get("success_rate", 0.9) > 0.9:  # 成功率>90%
+                return TTSEngine.EDGE_TTS
+        
+        # 2. 根据引擎健康状态选择
+        available_engines = []
+        for engine, stats in self.engine_stats.items():
+            success_rate = 1.0 - (stats["total_errors"] / max(stats["total_requests"], 1))
+            if success_rate > 0.8:  # 成功率>80%
+                available_engines.append((engine, self.engine_priority[engine]))
+        
+        # 3. 按优先级排序，选择最高优先级的可用引擎
+        if available_engines:
+            available_engines.sort(key=lambda x: x[1])  # 按优先级排序
+            return available_engines[0][0]
+        
+        # 4. 兜底：返回Edge TTS
         return TTSEngine.EDGE_TTS
     
     def get_engine(self, engine_type: TTSEngine):
@@ -268,14 +366,14 @@ class TTSLoadBalancer:
             stats["total_errors"] += 1
 
 class TTSService:
-    """TTS微服务主类"""
+    """TTS微服务主类 - P0优化版本"""
     
-    def __init__(self, max_concurrent: int = 20):
+    def __init__(self, max_concurrent: int = 40):  # P0优化：从20提升到40
         self.max_concurrent = max_concurrent
         self.load_balancer = TTSLoadBalancer()
         self.cache = None
         self.redis_client = None
-        self.executor = ThreadPoolExecutor(max_workers=8)
+        self.executor = ThreadPoolExecutor(max_workers=12)  # P0优化：从8提升到12
         
         # 优先级队列
         self.high_priority_queue = asyncio.Queue()
@@ -357,23 +455,47 @@ class TTSService:
             self.current_concurrent -= 1
     
     async def synthesize_speech(self, request: TTSRequest) -> TTSResponse:
-        """合成语音"""
+        """P0优化：合成语音 - 本地优先策略"""
         start_time = time.time()
         
         try:
-            # 检查缓存
+            # 生成缓存键
+            voice_id = request.voice_id or "zh-CN-XiaoxiaoNeural"
+            cache_key = None
+            
             if request.cache_enabled and self.cache:
                 cache_key = self.cache.generate_cache_key(
                     request.text,
-                    request.voice_id or "zh-CN-XiaoxiaoNeural",
+                    voice_id,
                     request.speed,
                     request.pitch,
                     request.volume
                 )
                 
+                # P0优化：优先检查常用短语缓存
+                if self.cache.is_common_phrase(request.text):
+                    cached_audio = await self.cache.get_cached_audio(cache_key)
+                    if cached_audio:
+                        self.cache_hits += 1
+                        logger.info(f"常用短语缓存命中: {request.text}")
+                        return TTSResponse(
+                            session_id=request.session_id,
+                            audio_data=base64.b64encode(cached_audio["audio_data"]).decode(),
+                            duration=cached_audio["duration"],
+                            format=cached_audio["format"],
+                            sample_rate=cached_audio["sample_rate"],
+                            file_size=cached_audio["file_size"],
+                            processing_time=time.time() - start_time,
+                            cached=True,
+                            voice_id=voice_id,
+                            engine=cached_audio["engine"]
+                        )
+                
+                # 检查普通缓存
                 cached_audio = await self.cache.get_cached_audio(cache_key)
                 if cached_audio:
                     self.cache_hits += 1
+                    logger.info(f"TTS缓存命中: {request.text[:20]}...")
                     return TTSResponse(
                         session_id=request.session_id,
                         audio_data=base64.b64encode(cached_audio["audio_data"]).decode(),
@@ -383,13 +505,13 @@ class TTSService:
                         file_size=cached_audio["file_size"],
                         processing_time=time.time() - start_time,
                         cached=True,
-                        voice_id=cached_audio["voice_id"],
+                        voice_id=voice_id,
                         engine=cached_audio["engine"]
                     )
             
-            # 选择引擎
-            voice_id = request.voice_id or "zh-CN-XiaoxiaoNeural"
-            engine_type = self.load_balancer.select_engine(voice_id)
+            # P0优化：智能选择TTS引擎（本地优先）
+            text_length = len(request.text)
+            engine_type = self.load_balancer.select_engine(voice_id, text_length)
             engine = self.load_balancer.get_engine(engine_type)
             
             if not engine:
@@ -508,13 +630,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 全局TTS服务实例 - 优化并发配置
-tts_service = TTSService(max_concurrent=30)  # 从20提升到30
+# 全局TTS服务实例 - P0优化配置
+tts_service = TTSService(max_concurrent=40)  # P0优化：从30提升到40
 
 @app.on_event("startup")
 async def startup_event():
-    """启动事件"""
+    """启动事件 - P0优化版本"""
     await tts_service.init_redis()
+    
+    # P0优化：启动时预加载常用短语缓存
+    if tts_service.cache and tts_service.load_balancer.engines:
+        edge_engine = tts_service.load_balancer.get_engine(TTSEngine.EDGE_TTS)
+        if edge_engine:
+            await tts_service.cache.preload_common_cache(edge_engine)
+            logger.info("TTS服务启动完成，预缓存已加载")
 
 @app.post("/tts/synthesize", response_model=TTSResponse)
 async def synthesize_speech(request: TTSRequest, background_tasks: BackgroundTasks):

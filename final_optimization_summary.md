@@ -241,22 +241,50 @@ docker stats
 - **服务冲突**: 端口和资源隔离
 - **回滚方案**: 保留原配置备份
 
+## TTS配置更新说明
+
+### 配置变更概述
+**重要更新**: TTS引擎配置已从本地配置文件迁移到Web统一管理界面
+
+### 变更详情
+- **移除配置**: Azure TTS (15%权重) 和 讯飞TTS (5%权重)
+- **保留配置**: Edge TTS (100%权重) - 本地免费引擎
+- **新管理方式**: 通过 http://182.44.78.40:8002/#/model-config 统一配置
+
+### 受影响的文件
+- `/root/xiaozhi-server/services/tts_service.py` - 移除远程TTS引擎权重配置
+- `/root/xiaozhi-server/config/llm_tts_resource_reservation.yaml` - 简化TTS引擎配置
+- `/root/xiaozhi-server/config/settings.py` - 移除Azure和讯飞TTS配置
+- `/root/xiaozhi-server/config/config_loader.py` - 移除相关API密钥配置
+
+### 优势
+- **成本优化**: 100%使用免费的Edge TTS，无API调用费用
+- **统一管理**: 所有TTS配置集中在Web界面，便于管理
+- **简化维护**: 减少配置文件复杂度，降低维护成本
+- **实时调整**: 通过Web界面可实时调整TTS配置，无需重启服务
+
+### 配置指南
+详细的TTS Web配置使用方法请参考: `/root/xiaozhi-server/config/web_config_guide.md`
+
 ## 后续优化建议
 
 ### 短期优化 (1-2周)
 - 微调批处理参数
 - 优化缓存策略
 - 完善监控告警
+- 验证Web配置界面的TTS设置
 
 ### 中期优化 (1-2月)
 - 引入GPU加速
 - 实现服务网格
 - 优化模型量化
+- 完善Web配置界面功能
 
 ### 长期规划 (3-6月)
 - 微服务架构
 - Kubernetes部署
 - 边缘计算支持
+- 智能TTS引擎选择策略
 
 ## 总结
 

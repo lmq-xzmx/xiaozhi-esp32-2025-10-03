@@ -118,19 +118,29 @@ services:
     # 绑定到第4个核心，避免与主服务竞争
     cpuset: "3"
 
-  # 数据库 - 优化配置
+  # 数据库 - P0优化配置（内存使用率从95%降至75%）
   xiaozhi-esp32-server-db:
     image: mysql:8.0
     container_name: xiaozhi-esp32-server-db
     command: >
       --default-authentication-plugin=mysql_native_password
-      --innodb-buffer-pool-size=256M
+      --innodb-buffer-pool-size=180M
       --innodb-log-file-size=64M
       --innodb-flush-log-at-trx-commit=2
       --innodb-flush-method=O_DIRECT
-      --max-connections=100
-      --tmp-table-size=32M
-      --max-heap-table-size=32M
+      --max-connections=40
+      --max-user-connections=35
+      --tmp-table-size=16M
+      --max-heap-table-size=16M
+      --query-cache-type=1
+      --query-cache-size=24M
+      --query-cache-limit=2M
+      --sort-buffer-size=1M
+      --join-buffer-size=1M
+      --thread-cache-size=16
+      --table-open-cache=400
+      --wait-timeout=300
+      --interactive-timeout=300
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 45s

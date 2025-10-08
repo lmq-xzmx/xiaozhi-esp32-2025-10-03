@@ -41,14 +41,24 @@ class VADResult:
     processing_time: float
 
 class SileroVADProcessor:
-    """优化的SileroVAD处理器，支持批处理和ONNX Runtime优化"""
+    """P0优化的SileroVAD处理器，支持批处理和ONNX Runtime优化"""
     
     def __init__(self, model_path: str = "silero_vad.onnx", batch_size: int = 32):
+<<<<<<< HEAD
         self.batch_size = batch_size  # 从16提升到32
+=======
+        self.batch_size = batch_size  # P0优化：从16提升到32
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
         self.model = None
         self.onnx_session = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.use_onnx = model_path.endswith('.onnx')
+        
+        # P0优化：实时处理参数
+        self.chunk_size = 512  # 32ms@16kHz，极低延迟
+        self.chunk_overlap = 64  # 4ms重叠
+        self.speech_threshold = 0.6  # 语音检测阈值
+        
         self.load_model(model_path)
         
         # 性能统计
@@ -61,15 +71,23 @@ class SileroVADProcessor:
             try:
                 import onnxruntime as ort
                 
-                # ONNX Runtime优化配置
+                # P0优化：ONNX Runtime配置
                 options = ort.SessionOptions()
                 options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+<<<<<<< HEAD
                 options.intra_op_num_threads = 4  # 从2提升到4个线程
                 options.inter_op_num_threads = 4  # 从2提升到4个线程
                 options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
                 options.enable_cpu_mem_arena = True
                 options.enable_mem_pattern = True
                 options.enable_mem_reuse = True
+=======
+                options.intra_op_num_threads = 4  # P0优化：增加到4个线程
+                options.inter_op_num_threads = 4  # P0优化：增加到4个线程
+                options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
+                options.enable_mem_pattern = True  # P0优化：启用内存模式优化
+                options.enable_mem_reuse = True    # P0优化：启用内存重用
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
                 
                 # 选择执行提供者
                 providers = []
@@ -164,7 +182,7 @@ class SileroVADProcessor:
                     input_data = audio_np.reshape(1, -1).astype(np.float32)
                     outputs = self.onnx_session.run(None, {'input': input_data})
                     speech_prob = float(outputs[0][0])
-                    is_speech = speech_prob > 0.5
+                    is_speech = speech_prob > self.speech_threshold  # P0优化：使用可配置阈值
                     batch_results.append((is_speech, speech_prob))
             else:
                 # 使用PyTorch进行推理
@@ -218,6 +236,7 @@ class SileroVADProcessor:
         }
 
 class VADService:
+<<<<<<< HEAD
     """VAD微服务主类，支持高并发和批处理优化"""
     
     def __init__(self, batch_size: int = 32, max_concurrent: int = 48):
@@ -249,6 +268,25 @@ class VADService:
         self.cache_hits = 0
         self.total_processing_time = 0.0
         self.current_concurrent = 0
+=======
+    """P0优化的VAD微服务主类"""
+    
+    def __init__(self, batch_size: int = 32, max_concurrent: int = 48):
+        self.batch_size = batch_size  # P0优化：从16提升到32
+        self.max_concurrent = max_concurrent  # P0优化：从24提升到48
+        self.processor = SileroVADProcessor(batch_size=batch_size)
+        self.request_queue = asyncio.Queue(maxsize=200)  # P0优化：添加队列大小限制
+        self.redis_client = None
+        self.executor = ThreadPoolExecutor(max_workers=6)  # P0优化：从4提升到6个工作线程
+        
+        # P0优化：添加性能监控
+        self.performance_stats = {
+            'total_requests': 0,
+            'avg_latency': 0.0,
+            'concurrent_requests': 0,
+            'queue_size': 0
+        }
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
         
         # 启动批处理任务
         asyncio.create_task(self.batch_processor())
@@ -278,22 +316,22 @@ class VADService:
             logger.error(f"Redis连接失败: {e}")
     
     async def batch_processor(self):
-        """批处理任务"""
+        """P0优化的批处理任务"""
         while True:
             try:
                 requests = []
                 
-                # 收集批处理请求
-                timeout = 0.05  # 50ms超时
+                # P0优化：收集批处理请求（减少延迟）
+                timeout = 0.015  # P0优化：15ms超时，减少延迟
                 try:
                     # 获取第一个请求
                     req = await asyncio.wait_for(self.request_queue.get(), timeout=timeout)
                     requests.append(req)
                     
-                    # 尝试获取更多请求组成批次
+                    # P0优化：尝试获取更多请求组成批次（减少等待时间）
                     for _ in range(self.batch_size - 1):
                         try:
-                            req = await asyncio.wait_for(self.request_queue.get(), timeout=0.01)
+                            req = await asyncio.wait_for(self.request_queue.get(), timeout=0.005)  # P0优化：减少到5ms
                             requests.append(req)
                         except asyncio.TimeoutError:
                             break
@@ -373,7 +411,11 @@ app.add_middleware(
 )
 
 # 全局VAD服务实例
+<<<<<<< HEAD
 vad_service = VADService(batch_size=32, max_concurrent=48)  # 提升配置
+=======
+vad_service = VADService(batch_size=32, max_concurrent=48)  # P0优化：应用新的批处理和并发参数
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
 
 @app.on_event("startup")
 async def startup_event():

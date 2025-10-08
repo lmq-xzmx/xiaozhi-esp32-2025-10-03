@@ -8,6 +8,14 @@ import aiohttp
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+class DeviceNotFoundException(Exception):
+    """设备未找到异常"""
+    pass
+
+class DeviceBindException(Exception):
+    """设备绑定异常"""
+    pass
+
 class ManageAPIClient:
     """
     管理API客户端

@@ -49,14 +49,25 @@ class ASRResult:
     cached: bool = False
 
 class SenseVoiceProcessor:
-    """优化的SenseVoice处理器，支持FP16量化和更大批处理"""
+    """P0优化的SenseVoice处理器，支持INT8量化和更大批处理"""
     
     def __init__(self, model_dir: str = "models/SenseVoiceSmall", batch_size: int = 16, enable_fp16: bool = True):
         self.model_dir = model_dir
+<<<<<<< HEAD
         self.batch_size = batch_size  # 从8提升到16
+=======
+        self.batch_size = batch_size  # P0优化：从8提升到16
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
         self.enable_fp16 = enable_fp16
         self.model = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # P0优化：实时处理参数
+        self.chunk_size = 800  # 50ms@16kHz
+        self.chunk_duration_ms = 50
+        self.overlap_ms = 10
+        self.max_audio_length_s = 30
+        self.beam_size = 1  # 贪婪解码，最快速度
         
         # 性能统计
         self.total_requests = 0
@@ -67,11 +78,33 @@ class SenseVoiceProcessor:
         self.load_model()
         self.warmup_model()
     
+    def _model_exists(self, model_path: str) -> bool:
+        """检查模型路径是否存在"""
+        import os
+        return os.path.exists(model_path) and os.path.isdir(model_path)
+    
     def load_model(self):
+<<<<<<< HEAD
         """加载SenseVoice模型，支持FP16量化和优化配置"""
+=======
+        """P0优化：加载SenseVoice模型，优先使用INT8量化版本"""
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
         try:
-            # 检查是否有FP16量化版本
-            fp16_model_dir = f"{self.model_dir}_fp16" if self.enable_fp16 else self.model_dir
+            # P0优化：优先检查INT8量化版本，然后FP16，最后原始版本
+            model_candidates = [
+                f"{self.model_dir}_int8",  # P0优化：优先INT8量化
+                f"{self.model_dir}_fp16" if self.enable_fp16 else None,
+                self.model_dir
+            ]
+            
+            model_path = None
+            for candidate in model_candidates:
+                if candidate and self._model_exists(candidate):
+                    model_path = candidate
+                    break
+            
+            if not model_path:
+                model_path = self.model_dir
             
             # 优化的模型加载配置
             model_kwargs = {
@@ -94,8 +127,15 @@ class SenseVoiceProcessor:
                 })
             
             self.model = AutoModel(
+<<<<<<< HEAD
                 model=fp16_model_dir if self.enable_fp16 else self.model_dir,
                 **model_kwargs
+=======
+                model=model_path,
+                vad_model="fsmn-vad",
+                vad_kwargs={"max_single_segment_time": self.max_audio_length_s * 1000},  # P0优化：使用配置的最大长度
+                device=self.device
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
             )
             
             # 如果启用FP16且在GPU上，转换模型精度
@@ -233,6 +273,7 @@ class SenseVoiceProcessor:
         }
 
 class ASRService:
+<<<<<<< HEAD
     """ASR微服务主类，支持高并发批处理和智能缓存"""
     
     def __init__(self, batch_size: int = 16, max_concurrent: int = 32):
@@ -261,6 +302,30 @@ class ASRService:
         self.total_processing_time = 0.0
         self.current_concurrent = 0
         self.error_count = 0
+=======
+    """P0优化的ASR服务，支持批处理、队列管理和缓存优化"""
+    
+    def __init__(self, batch_size: int = 16, max_concurrent: int = 40):
+        self.batch_size = batch_size  # P0优化：从8提升到16
+        self.max_concurrent = max_concurrent  # P0优化：从16提升到40
+        self.processor = SenseVoiceProcessor(batch_size=batch_size, enable_fp16=True)
+        
+        # P0优化：优先级队列，添加队列大小限制
+        self.high_priority_queue = asyncio.Queue(maxsize=50)
+        self.medium_priority_queue = asyncio.Queue(maxsize=75)
+        self.low_priority_queue = asyncio.Queue(maxsize=25)
+        
+        self.redis_client = None
+        self.executor = ThreadPoolExecutor(max_workers=8)  # P0优化：从4提升到8个工作线程
+        
+        # P0优化：添加性能监控
+        self.performance_stats = {
+            'total_requests': 0,
+            'avg_latency': 0.0,
+            'concurrent_requests': 0,
+            'queue_sizes': {'high': 0, 'medium': 0, 'low': 0}
+        }
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
         
         # 启动批处理任务
         asyncio.create_task(self.batch_processor())
@@ -311,10 +376,10 @@ class ASRService:
                 req = await asyncio.wait_for(queue.get(), timeout=timeout)
                 requests.append(req)
                 
-                # 尝试获取更多请求组成批次
+                # P0优化：尝试获取更多请求组成批次（减少等待时间提升响应速度）
                 for _ in range(self.batch_size - 1):
                     try:
-                        req = await asyncio.wait_for(queue.get(), timeout=0.01)
+                        req = await asyncio.wait_for(queue.get(), timeout=0.005)  # P0优化：从10ms减少到5ms
                         requests.append(req)
                     except asyncio.TimeoutError:
                         break
@@ -420,7 +485,11 @@ app.add_middleware(
 )
 
 # 全局ASR服务实例
+<<<<<<< HEAD
 asr_service = ASRService(batch_size=16, max_concurrent=32)  # 提升配置
+=======
+asr_service = ASRService(batch_size=16, max_concurrent=40)  # P0优化：应用新的批处理和并发参数
+>>>>>>> 2aa4dbc2af6d2f1b4c89b11ac5f75eb495cde788
 
 @app.on_event("startup")
 async def startup_event():

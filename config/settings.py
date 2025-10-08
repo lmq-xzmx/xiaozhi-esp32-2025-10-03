@@ -119,25 +119,11 @@ def load_config() -> Dict[str, Any]:
             "enable_compression": os.getenv("ENABLE_COMPRESSION", "true").lower() == "true",
             "enable_cache": os.getenv("ENABLE_TTS_CACHE", "true").lower() == "true",
             "cache_ttl": int(os.getenv("TTS_CACHE_TTL", "3600")),
+            # 注意：TTS引擎配置现在通过 http://182.44.78.40:8002/#/model-config 统一管理
             "engines": {
                 "edge": {
-                    "weight": 0.4,
+                    "weight": 1.0,
                     "voice": "zh-CN-XiaoxiaoNeural",
-                },
-                "azure": {
-                    "api_key": os.getenv("AZURE_TTS_KEY", ""),
-                    "region": os.getenv("AZURE_TTS_REGION", "eastasia"),
-                    "weight": 0.3,
-                    "voice": "zh-CN-XiaoxiaoNeural",
-                },
-                "xunfei": {
-                    "api_key": os.getenv("XUNFEI_TTS_KEY", ""),
-                    "weight": 0.2,
-                    "voice": "xiaoyan",
-                },
-                "local": {
-                    "weight": 0.1,
-                    "model_path": "/opt/xiaozhi-esp32-server/models/tts",
                 },
             },
         },
