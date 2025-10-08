@@ -75,12 +75,14 @@ class LLMResponse(BaseModel):
     timestamp: float = 0.0
 
 class LLMLoadBalancer:
-    """LLM负载均衡器"""
+    """LLM负载均衡器 - P0优化版本"""
     
     def __init__(self):
         self.endpoints: List[LLMEndpoint] = []
         self.circuit_breaker_threshold = 5  # 连续错误阈值
-        self.circuit_breaker_timeout = 300  # 熔断器超时时间（秒）
+        self.circuit_breaker_timeout = 30  # 熔断器超时时间（秒）- 优化配置
+        self.health_check_interval = 10  # 健康检查间隔（秒）
+        self.last_health_check = 0
     
     def add_endpoint(self, endpoint: LLMEndpoint):
         """添加LLM端点"""
@@ -151,8 +153,8 @@ class LLMCache:
     
     def __init__(self, redis_client):
         self.redis_client = redis_client
-        # P0优化：激进缓存策略
-        self.cache_ttl = 7200  # 2小时 (平衡性能和时效性)
+        # P0优化：平衡缓存策略
+        self.cache_ttl = 1800  # 30分钟 (优化配置建议)
         self.max_cache_size = 50000  # 5万条缓存 (大幅提升)
         self.semantic_threshold = 0.85  # 语义相似度阈值
         self.enable_compression = True  # 启用压缩
@@ -273,8 +275,8 @@ class LLMService:
         self.init_endpoints()
     
     def init_endpoints(self):
-        """初始化LLM端点"""
-        # 示例端点配置（实际使用时从配置文件读取）
+        """初始化LLM端点 - P0优化版本"""
+        # P0优化：根据优化配置调整权重和并发数
         endpoints = [
             LLMEndpoint(
                 provider=LLMProvider.QWEN,
@@ -282,8 +284,9 @@ class LLMService:
                 api_key="your-qwen-api-key",
                 model="qwen-turbo",
                 max_tokens=2048,
-                weight=3,
-                max_concurrent=15
+                weight=25,  # 优化配置权重
+                max_concurrent=50,  # 大幅提升并发数
+                timeout=30.0
             ),
             LLMEndpoint(
                 provider=LLMProvider.BAICHUAN,
@@ -291,8 +294,9 @@ class LLMService:
                 api_key="your-baichuan-api-key",
                 model="Baichuan2-Turbo",
                 max_tokens=2048,
-                weight=2,
-                max_concurrent=10
+                weight=20,  # 优化配置权重
+                max_concurrent=40,  # 提升并发数
+                timeout=30.0
             ),
             LLMEndpoint(
                 provider=LLMProvider.LOCAL,
@@ -300,8 +304,9 @@ class LLMService:
                 api_key="",
                 model="qwen2:7b",
                 max_tokens=2048,
-                weight=1,
-                max_concurrent=5
+                weight=30,  # 本地模型优先权重
+                max_concurrent=20,  # 本地模型适中并发
+                timeout=30.0
             )
         ]
         
@@ -319,16 +324,16 @@ class LLMService:
             logger.error(f"Redis连接失败: {e}")
     
     async def init_session(self):
-        """初始化HTTP会话，优化连接池配置"""
+        """初始化HTTP会话，P0优化连接池配置"""
         connector = aiohttp.TCPConnector(
-            limit=200,  # 从100提升到200
-            limit_per_host=50,  # 从20提升到50
-            ttl_dns_cache=600,  # 从300提升到600秒
+            limit=300,  # P0优化：进一步提升总连接数
+            limit_per_host=100,  # P0优化：大幅提升单主机连接数
+            ttl_dns_cache=600,  # DNS缓存时间
             use_dns_cache=True,
             keepalive_timeout=60,  # 增加keepalive超时
             enable_cleanup_closed=True,  # 启用清理关闭的连接
             force_close=False,  # 不强制关闭连接
-            limit_per_host_per_scheme=30  # 每个scheme的连接限制
+            limit_per_host_per_scheme=50  # P0优化：提升每个scheme的连接限制
         )
         
         # 设置超时配置

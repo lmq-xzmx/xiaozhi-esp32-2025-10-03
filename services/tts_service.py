@@ -61,7 +61,7 @@ class TTSRequest(BaseModel):
     speed: float = 1.0
     pitch: float = 0.0
     volume: float = 1.0
-    format: str = "mp3"  # mp3, wav, opus
+    format: str = "opus"  # P0优化：默认使用opus格式提高压缩效率
     sample_rate: int = 24000
     stream: bool = False
     cache_enabled: bool = True
@@ -87,7 +87,7 @@ class TTSCache:
     def __init__(self, redis_client, cache_dir: str = "/tmp/tts_cache"):
         self.redis_client = redis_client
         self.cache_dir = cache_dir
-        self.cache_ttl = 14400  # P0优化：4小时TTL
+        self.cache_ttl = 3600  # P0优化：1小时TTL（优化配置建议）
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.compression_enabled = True  # P0优化：启用压缩
         
