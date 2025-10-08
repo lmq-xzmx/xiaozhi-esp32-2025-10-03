@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  # 负载均衡器
+  nginx-lb:
+    image: nginx:alpine
+    ports:
+      - "8000:80"
+      - "8765:8765"  # WebSocket端口
+    volumes:
+      - ./nginx-100-devices.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - gateway-1
+      - gateway-2
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    restart: unless-stopped
+
+  # API网关集群 (2个实例) - 使用现有镜像
+  gateway-1:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      - PYTHONOPTIMIZE=2
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379/0
+      - DATABASE_URL=mysql://xiaozhi:xiaozhi123@xiaozhi-mysql-cluster:3306/xiaozhi
+      # VAD优化配置
+      - VAD_MODEL_PATH=/opt/xiaozhi-esp32-server/models/silero_vad.onnx
+      - VAD_BATCH_SIZE=8
+      - VAD_CONCURRENT_PROCESSES=4
+      - VAD_WORKER_THREADS=2
+      - VAD_ONNX_PROVIDERS=CPUExecutionProvider
+      - VAD_GRAPH_OPTIMIZATION_LEVEL=ORT_ENABLE_ALL
+      - VAD_INTRA_OP_NUM_THREADS=2
+      - VAD_INTER_OP_NUM_THREADS=1
+      - VAD_ENABLE_MEM_PATTERN=1
+      - VAD_ENABLE_MEM_ARENA=1
+    ports:
+      - "8001:8000"
+      - "8766:8765"
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
+      - ./models:/opt/xiaozhi-esp32-server/models
+      - /dev/shm:/dev/shm
+    depends_on:
+      - xiaozhi-redis-cluster
+      - xiaozhi-mysql-cluster
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '1.5'
+          memory: 2G
+    restart: unless-stopped
+
+  gateway-2:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=C.UTF-8
+      - PYTHONUNBUFFERED=1
+      - PYTHONOPTIMIZE=2
+      - REDIS_URL=redis://xiaozhi-redis-cluster:6379/0
+      - DATABASE_URL=mysql://xiaozhi:xiaozhi123@xiaozhi-mysql-cluster:3306/xiaozhi
+      # VAD优化配置
+      - VAD_MODEL_PATH=/opt/xiaozhi-esp32-server/models/silero_vad.onnx
+      - VAD_BATCH_SIZE=8
+      - VAD_CONCURRENT_PROCESSES=4
+      - VAD_WORKER_THREADS=2
+      - VAD_ONNX_PROVIDERS=CPUExecutionProvider
+      - VAD_GRAPH_OPTIMIZATION_LEVEL=ORT_ENABLE_ALL
+      - VAD_INTRA_OP_NUM_THREADS=2
+      - VAD_INTER_OP_NUM_THREADS=1
+      - VAD_ENABLE_MEM_PATTERN=1
+      - VAD_ENABLE_MEM_ARENA=1
+    ports:
+      - "8002:8000"
+      - "8767:8765"
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
+      - ./models:/opt/xiaozhi-esp32-server/models
+      - /dev/shm:/dev/shm
+    depends_on:
+      - xiaozhi-redis-cluster
+      - xiaozhi-mysql-cluster
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '1.5'
+          memory: 2G
+    restart: unless-stopped
+
+  # Web管理界面
+  xiaozhi-esp32-server-web:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:web_latest
+    ports:
+      - "8003:8002"
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://xiaozhi-mysql-cluster:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true&connectTimeout=30000&socketTimeout=30000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
+      - SPRING_DATASOURCE_DRUID_USERNAME=root
+      - SPRING_DATASOURCE_DRUID_PASSWORD=123456
+      - SPRING_DATA_REDIS_HOST=xiaozhi-redis-cluster
+      - SPRING_DATA_REDIS_PORT=6379
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+    volumes:
+      - ./uploadfile:/uploadfile
+    depends_on:
+      - xiaozhi-mysql-cluster
+      - xiaozhi-redis-cluster
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    restart: unless-stopped
+
+  # Redis集群
+  xiaozhi-redis-cluster:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    volumes:
+      - xiaozhi-redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1.5G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MySQL集群
+  xiaozhi-mysql-cluster:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: xiaozhi_esp32_server
+      TZ: Asia/Shanghai
+    volumes:
+      - xiaozhi-mysql-data:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  xiaozhi-redis-data:
+  xiaozhi-mysql-data:
+
+networks:
+  default:
+    driver: bridge
