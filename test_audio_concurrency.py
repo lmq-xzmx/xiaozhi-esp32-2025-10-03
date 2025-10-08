@@ -316,14 +316,14 @@ class AudioConcurrencyTester:
                 print("- Agent ID: 4905eb53279d41048b7b0497f66a79bc")
                 print("- Agent Name: 通义千万")
                 print("- LLM Model: LLM_AliLLM")
-                print("- VLLM Model: VLLM_ChatGLMVLLM")
+                # VLLM功能已移除
                 print("- TTS Model: TTS_AliyunStreamTTS")
                 
                 print("\n配置分析:")
                 print("✅ Agent配置存在且有效")
                 print("✅ 使用阿里云LLM和TTS服务")
                 print("⚠️ 显示'ChatGLMLLM'而非'通义千万'的原因:")
-                print("   1. VLLM模型配置为ChatGLMVLLM，前端可能显示VLLM模型名称")
+                print("   1. VLLM功能已移除，减少系统资源占用")
                 print("   2. Agent名称'通义千万'在数据库中正确配置")
                 print("   3. 实际使用的是LLM_AliLLM，这是正确的阿里云模型")
                 print("   4. 配置功能正常，显示问题不影响实际使用")

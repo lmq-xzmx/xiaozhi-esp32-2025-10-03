@@ -28,12 +28,7 @@ def get_private_config_from_api() -> Dict[str, Any]:
             "baichuan_model": os.getenv("BAICHUAN_MODEL", "Baichuan2-Turbo"),
             "openai_model": os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
         },
-        "vision": {
-            "enable": os.getenv("ENABLE_VISION", "false").lower() == "true",
-            "model": os.getenv("VISION_MODEL", "gpt-4-vision-preview"),
-            "max_tokens": int(os.getenv("VISION_MAX_TOKENS", "300")),
-            "detail": os.getenv("VISION_DETAIL", "low"),
-        },
+
         "security": {
             "jwt_secret": os.getenv("JWT_SECRET", "xiaozhi-secret-key"),
             "jwt_algorithm": os.getenv("JWT_ALGORITHM", "HS256"),
@@ -44,7 +39,6 @@ def get_private_config_from_api() -> Dict[str, Any]:
             "enable_asr": os.getenv("ENABLE_ASR", "true").lower() == "true",
             "enable_llm": os.getenv("ENABLE_LLM", "true").lower() == "true",
             "enable_tts": os.getenv("ENABLE_TTS", "true").lower() == "true",
-            "enable_vision": os.getenv("ENABLE_VISION", "false").lower() == "true",
         },
         "server": {
             "host": os.getenv("SERVER_HOST", "0.0.0.0"),

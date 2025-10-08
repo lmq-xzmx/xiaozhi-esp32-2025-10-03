@@ -280,11 +280,11 @@ class LLMService:
         endpoints = [
             LLMEndpoint(
                 provider=LLMProvider.QWEN,
-                url="https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+                url="http://182.44.78.40:8002/api/v1/chat/completions",  # 通义千问_qwen3-235b API
                 api_key="your-qwen-api-key",
-                model="qwen-turbo",
+                model="qwen3-235b",
                 max_tokens=2048,
-                weight=25,  # 优化配置权重
+                weight=100,  # 100%使用通义千问API
                 max_concurrent=50,  # 大幅提升并发数
                 timeout=30.0
             ),
@@ -294,7 +294,7 @@ class LLMService:
                 api_key="your-baichuan-api-key",
                 model="Baichuan2-Turbo",
                 max_tokens=2048,
-                weight=20,  # 优化配置权重
+                weight=0,  # 暂时禁用
                 max_concurrent=40,  # 提升并发数
                 timeout=30.0
             ),
@@ -304,7 +304,7 @@ class LLMService:
                 api_key="",
                 model="qwen2:7b",
                 max_tokens=2048,
-                weight=30,  # 本地模型优先权重
+                weight=0,  # 本地模型权重设为0
                 max_concurrent=20,  # 本地模型适中并发
                 timeout=30.0
             )

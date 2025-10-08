@@ -470,14 +470,14 @@ class ConcurrencyTester:
                 print("- Agent ID: 4905eb53279d41048b7b0497f66a79bc")
                 print("- Agent Name: 通义千万")
                 print("- LLM Model: LLM_AliLLM")
-                print("- VLLM Model: VLLM_ChatGLMVLLM")
+                # VLLM功能已移除
                 print("- TTS Model: TTS_AliyunStreamTTS")
                 
                 print("\n配置分析:")
                 print("✅ Agent配置存在")
                 print("⚠️ 显示'ChatGLMLLM'而非'通义千万'的原因:")
-                print("   1. VLLM模型配置为ChatGLMVLLM，这可能是显示的来源")
-                print("   2. 前端可能显示的是VLLM模型名称而非Agent名称")
+                print("   1. VLLM功能已移除，减少系统资源占用")
+                print("   2. 前端现在显示的是实际LLM模型名称")
                 print("   3. 配置同步可能存在延迟")
                 
                 return True

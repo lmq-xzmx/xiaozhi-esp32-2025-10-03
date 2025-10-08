@@ -18,8 +18,6 @@ def replace_selected_module(match):
   ASR: SenseVoiceStream
   # 将根据配置名称对应的type调用实际的LLM适配器
   LLM: ChatGLMLLM
-  # 视觉语言大模型
-  VLLM: ChatGLMVLLM
   # TTS将根据配置名称对应的type调用实际的TTS适配器
   TTS: EdgeTTS
   # 记忆模块，默认不开启记忆；如果想使用超长记忆，推荐使用mem0ai；如果注重隐私，请使用本地的mem_local_short
