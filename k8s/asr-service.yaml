@@ -7,7 +7,7 @@ metadata:
     app: asr-service
     component: ai-pipeline
 spec:
-  replicas: 4
+  replicas: 8
   selector:
     matchLabels:
       app: asr-service
@@ -23,24 +23,32 @@ spec:
         ports:
         - containerPort: 8001
         env:
-        - name: REDIS_URL
-          value: "redis://redis-service:6379"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_MAX_CONNECTIONS
+          value: "50"
         - name: BATCH_SIZE
-          value: "4"
+          value: "16"
         - name: MAX_CONCURRENT
-          value: "8"
+          value: "32"
         - name: MODEL_PATH
           value: "/models/SenseVoiceSmall"
         - name: CUDA_VISIBLE_DEVICES
           value: "0"
+        - name: MODEL_PRECISION
+          value: "fp16"
+        - name: CPU_THREADS
+          value: "4"
         resources:
           requests:
-            cpu: 1000m
-            memory: 4Gi
+            cpu: 1500m
+            memory: 6Gi
             nvidia.com/gpu: 1
           limits:
-            cpu: 2000m
-            memory: 8Gi
+            cpu: 3000m
+            memory: 12Gi
             nvidia.com/gpu: 1
         volumeMounts:
         - name: model-storage
@@ -49,15 +57,15 @@ spec:
           mountPath: /tmp
         livenessProbe:
           httpGet:
-            path: /health
+            path: /asr/stats
             port: 8001
           initialDelaySeconds: 60
           periodSeconds: 15
         readinessProbe:
           httpGet:
-            path: /health
+            path: /asr/stats
             port: 8001
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 10
       volumes:
       - name: model-storage

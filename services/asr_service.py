@@ -14,6 +14,9 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import torch
 import redis.asyncio as redis
+from redis.asyncio.connection import ConnectionPool
+from config.redis_config import get_redis_client, OptimizedRedisClient
+from core.queue_manager import get_queue_manager, QueueRequest, Priority
 from fastapi import FastAPI, WebSocket, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -48,9 +51,9 @@ class ASRResult:
 class SenseVoiceProcessor:
     """优化的SenseVoice处理器，支持FP16量化和更大批处理"""
     
-    def __init__(self, model_dir: str = "models/SenseVoiceSmall", batch_size: int = 8, enable_fp16: bool = True):
+    def __init__(self, model_dir: str = "models/SenseVoiceSmall", batch_size: int = 16, enable_fp16: bool = True):
         self.model_dir = model_dir
-        self.batch_size = batch_size  # 从4提升到8
+        self.batch_size = batch_size  # 从8提升到16
         self.enable_fp16 = enable_fp16
         self.model = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -65,16 +68,34 @@ class SenseVoiceProcessor:
         self.warmup_model()
     
     def load_model(self):
-        """加载SenseVoice模型，支持FP16量化"""
+        """加载SenseVoice模型，支持FP16量化和优化配置"""
         try:
             # 检查是否有FP16量化版本
             fp16_model_dir = f"{self.model_dir}_fp16" if self.enable_fp16 else self.model_dir
             
+            # 优化的模型加载配置
+            model_kwargs = {
+                "vad_model": "fsmn-vad",
+                "vad_kwargs": {
+                    "max_single_segment_time": 30000,
+                    "max_start_silence_time": 3000,
+                    "max_end_silence_time": 800,
+                },
+                "device": self.device,
+                "ncpu": 4,  # 增加CPU线程数
+                "batch_size": self.batch_size,
+            }
+            
+            # 如果是GPU环境，添加GPU优化配置
+            if torch.cuda.is_available():
+                model_kwargs.update({
+                    "device_id": 0,
+                    "precision": "fp16" if self.enable_fp16 else "fp32",
+                })
+            
             self.model = AutoModel(
                 model=fp16_model_dir if self.enable_fp16 else self.model_dir,
-                vad_model="fsmn-vad",
-                vad_kwargs={"max_single_segment_time": 30000},
-                device=self.device
+                **model_kwargs
             )
             
             # 如果启用FP16且在GPU上，转换模型精度
@@ -84,10 +105,16 @@ class SenseVoiceProcessor:
                     if hasattr(self.model, 'model') and hasattr(self.model.model, 'half'):
                         self.model.model = self.model.model.half()
                         logger.info("模型已转换为FP16精度")
+                    
+                    # 启用混合精度训练
+                    if hasattr(torch.backends.cudnn, 'allow_tf32'):
+                        torch.backends.cudnn.allow_tf32 = True
+                        torch.backends.cuda.matmul.allow_tf32 = True
+                        
                 except Exception as e:
                     logger.warning(f"FP16转换失败，使用FP32: {e}")
             
-            logger.info(f"SenseVoice模型加载成功，设备: {self.device}, FP16: {self.enable_fp16}")
+            logger.info(f"SenseVoice模型加载成功，设备: {self.device}, FP16: {self.enable_fp16}, 批处理: {self.batch_size}")
         except Exception as e:
             logger.error(f"模型加载失败: {e}")
             # 回退到原始模型
@@ -206,32 +233,68 @@ class SenseVoiceProcessor:
         }
 
 class ASRService:
-    """ASR微服务主类"""
+    """ASR微服务主类，支持高并发批处理和智能缓存"""
     
-    def __init__(self, batch_size: int = 8, max_concurrent: int = 16):
-        self.batch_size = batch_size  # 从4提升到8
-        self.max_concurrent = max_concurrent  # 从8提升到16
-        self.processor = SenseVoiceProcessor(batch_size=batch_size, enable_fp16=True)
-        
-        # 优先级队列
-        self.high_priority_queue = asyncio.Queue()
-        self.medium_priority_queue = asyncio.Queue()
-        self.low_priority_queue = asyncio.Queue()
-        
+    def __init__(self, batch_size: int = 16, max_concurrent: int = 32):
+        self.batch_size = batch_size  # 从8提升到16
+        self.max_concurrent = max_concurrent  # 从16提升到32
+        self.processor = SenseVoiceProcessor(batch_size=batch_size)
         self.redis_client = None
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        
+        # 智能队列管理器
+        self.queue_manager = get_queue_manager(
+            "asr_service",
+            max_queue_size=3000,
+            batch_size=batch_size,
+            batch_timeout=0.1,  # 100ms批处理超时
+            max_concurrent=max_concurrent
+        )
+        
+        # 优先级队列系统
+        self.high_priority_queue = asyncio.Queue(maxsize=100)  # 高优先级队列
+        self.medium_priority_queue = asyncio.Queue(maxsize=300)  # 中优先级队列
+        self.low_priority_queue = asyncio.Queue(maxsize=500)  # 低优先级队列
+        
+        # 性能统计和监控
+        self.total_requests = 0
+        self.cache_hits = 0
+        self.total_processing_time = 0.0
+        self.current_concurrent = 0
+        self.error_count = 0
         
         # 启动批处理任务
         asyncio.create_task(self.batch_processor())
+        asyncio.create_task(self.performance_monitor())
     
-    async def init_redis(self, redis_url: str = "redis://localhost:6379"):
-        """初始化Redis连接"""
+    async def performance_monitor(self):
+        """性能监控任务"""
+        while True:
+            await asyncio.sleep(60)  # 每分钟记录一次
+            if self.total_requests > 0:
+                avg_time = self.total_processing_time / self.total_requests
+                cache_rate = self.cache_hits / self.total_requests * 100
+                logger.info(f"ASR性能统计 - 平均处理时间: {avg_time:.3f}s, 缓存命中率: {cache_rate:.1f}%, 当前并发: {self.current_concurrent}")
+    
+    async def initialize(self):
+        """初始化服务"""
         try:
-            self.redis_client = redis.from_url(redis_url)
-            await self.redis_client.ping()
-            logger.info("Redis连接成功")
+            await self.processor.initialize()
+            # 初始化优化的Redis客户端
+            self.redis_client = await get_redis_client()
+            await self.redis_client.health_check()
+            # 启动智能队列管理器
+            await self.queue_manager.start()
+            logger.info("ASR服务初始化成功")
+            return True
         except Exception as e:
-            logger.error(f"Redis连接失败: {e}")
+            logger.error(f"ASR服务初始化失败: {e}")
+            return False
+    
+    async def init_redis(self, redis_url: str = "redis://localhost:6379/0"):
+        """初始化Redis连接"""
+        self.redis_client = redis.from_url(redis_url)
+        await self.redis_client.ping()
+        logger.info("Redis连接成功")
     
     async def get_next_batch(self) -> List[ASRRequest]:
         """从优先级队列获取下一批请求"""
@@ -357,7 +420,7 @@ app.add_middleware(
 )
 
 # 全局ASR服务实例
-asr_service = ASRService(batch_size=8, max_concurrent=16)
+asr_service = ASRService(batch_size=16, max_concurrent=32)  # 提升配置
 
 @app.on_event("startup")
 async def startup_event():

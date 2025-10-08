@@ -7,7 +7,7 @@ metadata:
     app: vad-service
     component: ai-pipeline
 spec:
-  replicas: 3
+  replicas: 6  # 从3增加到6，提升并发处理能力
   selector:
     matchLabels:
       app: vad-service
@@ -21,36 +21,40 @@ spec:
       - name: vad-service
         image: xiaozhi/vad-service:latest
         ports:
-        - containerPort: 8000
+        - containerPort: 8004
         env:
-        - name: REDIS_URL
-          value: "redis://redis-service:6379"
         - name: BATCH_SIZE
-          value: "8"
+          value: "32"  # 从8增加到32，匹配代码优化
         - name: MAX_CONCURRENT
-          value: "16"
+          value: "48"  # 从16增加到48，匹配代码优化
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_MAX_CONNECTIONS
+          value: "50"
         - name: MODEL_PATH
           value: "/models/silero_vad"
         resources:
           requests:
-            cpu: 500m
-            memory: 1Gi
+            cpu: 1000m   # 从500m增加到1000m
+            memory: 2Gi  # 从1Gi增加到2Gi
           limits:
-            cpu: 1000m
-            memory: 2Gi
+            cpu: 2000m   # 从1000m增加到2000m
+            memory: 4Gi  # 从2Gi增加到4Gi
         volumeMounts:
         - name: model-storage
           mountPath: /models
         livenessProbe:
           httpGet:
-            path: /health
-            port: 8000
+            path: /vad/stats
+            port: 8004
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health
-            port: 8000
+            path: /vad/stats
+            port: 8004
           initialDelaySeconds: 5
           periodSeconds: 5
       volumes:

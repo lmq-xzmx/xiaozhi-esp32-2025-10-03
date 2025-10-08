@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import torch
 import redis.asyncio as redis
+from config.redis_config import get_redis_client, OptimizedRedisClient
+from core.queue_manager import get_queue_manager, QueueRequest, Priority
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -41,8 +43,8 @@ class VADResult:
 class SileroVADProcessor:
     """优化的SileroVAD处理器，支持批处理和ONNX Runtime优化"""
     
-    def __init__(self, model_path: str = "silero_vad.onnx", batch_size: int = 16):
-        self.batch_size = batch_size  # 从8提升到16
+    def __init__(self, model_path: str = "silero_vad.onnx", batch_size: int = 32):
+        self.batch_size = batch_size  # 从16提升到32
         self.model = None
         self.onnx_session = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -62,14 +64,27 @@ class SileroVADProcessor:
                 # ONNX Runtime优化配置
                 options = ort.SessionOptions()
                 options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-                options.intra_op_num_threads = 2  # 使用2个线程
-                options.inter_op_num_threads = 2  # 使用2个线程
+                options.intra_op_num_threads = 4  # 从2提升到4个线程
+                options.inter_op_num_threads = 4  # 从2提升到4个线程
                 options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
+                options.enable_cpu_mem_arena = True
+                options.enable_mem_pattern = True
+                options.enable_mem_reuse = True
                 
                 # 选择执行提供者
-                providers = ['CPUExecutionProvider']
+                providers = []
                 if torch.cuda.is_available():
-                    providers.insert(0, 'CUDAExecutionProvider')
+                    providers.append(('CUDAExecutionProvider', {
+                        'device_id': 0,
+                        'arena_extend_strategy': 'kNextPowerOfTwo',
+                        'gpu_mem_limit': 2 * 1024 * 1024 * 1024,  # 2GB
+                        'cudnn_conv_algo_search': 'EXHAUSTIVE',
+                        'do_copy_in_default_stream': True,
+                    }))
+                providers.append(('CPUExecutionProvider', {
+                    'arena_extend_strategy': 'kSameAsRequested',
+                    'enable_cpu_mem_arena': True,
+                }))
                 
                 self.onnx_session = ort.InferenceSession(
                     model_path, 
@@ -85,6 +100,9 @@ class SileroVADProcessor:
             # 使用torch.jit.load加载模型
             self.model = torch.jit.load(model_path.replace('.onnx', '.pt'), map_location=self.device)
             self.model.eval()
+            # 启用JIT优化
+            if hasattr(torch.jit, 'optimize_for_inference'):
+                self.model = torch.jit.optimize_for_inference(self.model)
             logger.info(f"PyTorch SileroVAD模型加载成功，设备: {self.device}")
         except Exception as e:
             logger.error(f"PyTorch模型加载失败: {e}")
@@ -200,18 +218,55 @@ class SileroVADProcessor:
         }
 
 class VADService:
-    """VAD微服务主类"""
+    """VAD微服务主类，支持高并发和批处理优化"""
     
-    def __init__(self, batch_size: int = 16, max_concurrent: int = 24):
-        self.batch_size = batch_size  # 从8提升到16
-        self.max_concurrent = max_concurrent  # 从16提升到24
+    def __init__(self, batch_size: int = 32, max_concurrent: int = 48):
+        self.batch_size = batch_size  # 从16提升到32
+        self.max_concurrent = max_concurrent  # 从24提升到48
         self.processor = SileroVADProcessor(batch_size=batch_size)
-        self.request_queue = asyncio.Queue()
+        # 使用优化的Redis客户端
         self.redis_client = None
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        
+        # 智能队列管理器
+        self.queue_manager = get_queue_manager(
+            "vad_service",
+            max_queue_size=5000,
+            batch_size=batch_size,
+            batch_timeout=0.05,  # 50ms批处理超时
+            max_concurrent=max_concurrent
+        )
+        
+        # 优先级队列
+        self.high_priority_queue = asyncio.Queue(maxsize=200)  # 增加队列容量
+        self.medium_priority_queue = asyncio.Queue(maxsize=500)
+        self.low_priority_queue = asyncio.Queue(maxsize=1000)
+        
+        # 请求队列用于批处理
+        self.request_queue = asyncio.Queue(maxsize=1000)
+        
+        # 性能统计
+        self.total_requests = 0
+        self.cache_hits = 0
+        self.total_processing_time = 0.0
+        self.current_concurrent = 0
         
         # 启动批处理任务
         asyncio.create_task(self.batch_processor())
+    
+    async def initialize(self):
+        """初始化服务"""
+        try:
+            await self.processor.initialize()
+            # 初始化优化的Redis客户端
+            self.redis_client = await get_redis_client()
+            await self.redis_client.health_check()
+            # 启动智能队列管理器
+            await self.queue_manager.start()
+            logger.info("VAD服务初始化成功")
+            return True
+        except Exception as e:
+            logger.error(f"VAD服务初始化失败: {e}")
+            return False
     
     async def init_redis(self, redis_url: str = "redis://localhost:6379"):
         """初始化Redis连接"""
@@ -318,7 +373,7 @@ app.add_middleware(
 )
 
 # 全局VAD服务实例
-vad_service = VADService(batch_size=16, max_concurrent=24)
+vad_service = VADService(batch_size=32, max_concurrent=48)  # 提升配置
 
 @app.on_event("startup")
 async def startup_event():
