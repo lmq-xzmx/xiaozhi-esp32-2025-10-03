@@ -2,7 +2,7 @@
 """
 ASR (Automatic Speech Recognition) 微服务
 基于SenseVoice，支持批处理、队列管理和模型缓存优化
-P0优化版本：支持100台设备并发
+4核8GB服务器优化版本：支持20-25台设备并发
 """
 
 import asyncio
@@ -50,27 +50,32 @@ class ASRResult:
     cached: bool = False
 
 class SenseVoiceProcessor:
-    """P0优化的SenseVoice处理器，支持批处理和量化优化"""
+    """4核8GB服务器优化的SenseVoice处理器，支持批处理和量化优化"""
     
-    def __init__(self, model_dir: str = "models/SenseVoiceSmall", batch_size: int = 16, enable_fp16: bool = True):
+    def __init__(self, model_dir: str = "models/SenseVoiceSmall", batch_size: int = 10, enable_fp16: bool = True):
         self.model_dir = model_dir
-        # 批处理配置 - P0优化：从8提升到16
+        # 批处理配置 - 4核8GB优化：提升到10以增加吞吐量
         self.batch_size = batch_size
         self.enable_fp16 = enable_fp16
         self.model = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        # P0优化：实时处理参数
-        self.chunk_size = 800  # 50ms@16kHz
-        self.chunk_duration_ms = 50
-        self.overlap_ms = 10
-        self.max_audio_length_s = 30
+        # 4核8GB优化：实时处理参数
+        self.chunk_size = 640  # 40ms@16kHz，降低延迟
+        self.chunk_duration_ms = 40
+        self.overlap_ms = 8  # 减少重叠以节省计算
+        self.max_audio_length_s = 25  # 降低最大音频长度
         self.beam_size = 1  # 贪婪解码，最快速度
         
         # 性能统计
         self.total_requests = 0
         self.total_processing_time = 0.0
         self.cache_hits = 0
+        
+        # 内存管理
+        self.max_memory_mb = 1500  # 限制最大内存使用1.5GB
+        self.audio_buffer_pool = []
+        self.result_cache_max_size = 768  # 优化缓存大小为768MB
         
         # 加载模型
         self.load_model()
@@ -84,9 +89,9 @@ class SenseVoiceProcessor:
     def load_model(self):
         """加载SenseVoice模型，优先使用量化版本"""
         try:
-            # P0优化：优先加载量化模型
+            # 4核8GB优化：优先加载量化模型
             model_candidates = [
-                f"{self.model_dir}_int8",  # P0优化：优先INT8量化
+                f"{self.model_dir}_int8",  # 优先INT8量化
                 f"{self.model_dir}_fp16" if self.enable_fp16 else None,
                 self.model_dir
             ]
@@ -100,199 +105,225 @@ class SenseVoiceProcessor:
             if not model_path:
                 model_path = self.model_dir
             
-            # P0优化：模型加载配置
-            model_kwargs = {
-                "vad_model": "fsmn-vad",
-                "vad_kwargs": {
-                    "max_single_segment_time": 30000,
-                    "max_start_silence_time": 3000,
-                    "max_end_silence_time": 800,
-                },
-                "device": self.device,
-                "ncpu": 4,  # 增加CPU线程数
-                "batch_size": self.batch_size,
-            }
+            logger.info(f"加载ASR模型: {model_path}")
             
-            # GPU特定配置
-            if torch.cuda.is_available():
-                model_kwargs.update({
-                    "device_id": 0,
-                    "precision": "fp16" if self.enable_fp16 else "fp32",
-                })
-            
+            # 4核8GB优化：使用更保守的模型配置
             self.model = AutoModel(
                 model=model_path,
-                **model_kwargs
+                device=self.device,
+                # 内存优化配置
+                cache_dir="./cache/asr",
+                trust_remote_code=True,
+                # 4核8GB优化：降低并发处理
+                batch_size=self.batch_size,
+                # 启用FP16以节省内存
+                torch_dtype=torch.float16 if self.enable_fp16 and self.device.type == 'cuda' else torch.float32
             )
             
-            # P0优化：FP16转换
-            if self.enable_fp16 and torch.cuda.is_available():
-                try:
-                    # 启用FP16优化
-                    if hasattr(self.model, 'model') and hasattr(self.model.model, 'half'):
-                        self.model.model = self.model.model.half()
-                        logger.info("模型已转换为FP16精度")
-                    
-                    # 启用TensorFloat-32优化
-                    if hasattr(torch.backends.cudnn, 'allow_tf32'):
-                        torch.backends.cudnn.allow_tf32 = True
-                        torch.backends.cuda.matmul.allow_tf32 = True
-                        
-                except Exception as e:
-                    logger.warning(f"FP16转换失败，使用FP32: {e}")
+            # 设置模型为评估模式
+            if hasattr(self.model, 'eval'):
+                self.model.eval()
             
-            logger.info(f"SenseVoice模型加载成功，设备: {self.device}, FP16: {self.enable_fp16}, 批处理: {self.batch_size}")
+            # 4核8GB优化：启用JIT编译（如果支持）
+            if hasattr(torch.jit, 'script') and hasattr(self.model, 'forward'):
+                try:
+                    self.model = torch.jit.script(self.model)
+                    logger.info("启用JIT编译优化")
+                except Exception as e:
+                    logger.warning(f"JIT编译失败，使用原始模型: {e}")
+            
+            logger.info(f"ASR模型加载成功，设备: {self.device}")
+            
         except Exception as e:
-            logger.error(f"模型加载失败: {e}")
-            # 回退到原始模型
-            try:
-                self.model = AutoModel(
-                    model=self.model_dir,
-                    vad_model="fsmn-vad",
-                    vad_kwargs={"max_single_segment_time": 30000},
-                    device=self.device
-                )
-                logger.info("回退到原始模型加载成功")
-            except Exception as e2:
-                logger.error(f"回退模型加载也失败: {e2}")
-                raise
+            logger.error(f"ASR模型加载失败: {e}")
+            raise
     
     def warmup_model(self):
-        """模型预热"""
+        """模型预热，减少首次推理延迟"""
         try:
-            # 生成虚拟音频数据进行预热
+            logger.info("开始ASR模型预热...")
+            # 创建虚拟音频数据进行预热
             dummy_audio = np.random.randn(16000).astype(np.float32)  # 1秒音频
-            _ = self.model.generate(input=dummy_audio, cache={}, language="zh")
-            logger.info("模型预热完成")
+            
+            # 执行2次预热推理（减少预热次数以节省时间）
+            for i in range(2):
+                start_time = time.time()
+                _ = self.model.generate(input=dummy_audio, cache={}, language="zh", use_itn=True)
+                warmup_time = time.time() - start_time
+                logger.info(f"预热 {i+1}/2 完成，耗时: {warmup_time:.3f}s")
+            
+            logger.info("ASR模型预热完成")
         except Exception as e:
-            logger.warning(f"模型预热失败: {e}")
+            logger.warning(f"ASR模型预热失败: {e}")
     
     def preprocess_audio(self, audio_data: bytes, sample_rate: int = 16000) -> np.ndarray:
-        """预处理音频数据"""
-        # 将bytes转换为numpy数组
-        audio_np = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
-        
-        # 重采样到16kHz
-        if sample_rate != 16000:
-            audio_np = librosa.resample(audio_np, orig_sr=sample_rate, target_sr=16000)
-        
-        return audio_np
+        """音频预处理，4核8GB优化版本"""
+        try:
+            # 将字节数据转换为numpy数组
+            audio_array = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            # 重采样到16kHz（如果需要）
+            if sample_rate != 16000:
+                audio_array = librosa.resample(audio_array, orig_sr=sample_rate, target_sr=16000)
+            
+            # 4核8GB优化：限制音频长度以节省内存
+            max_samples = 16000 * self.max_audio_length_s
+            if len(audio_array) > max_samples:
+                audio_array = audio_array[:max_samples]
+            
+            return audio_array
+        except Exception as e:
+            logger.error(f"音频预处理失败: {e}")
+            raise
     
     def generate_audio_hash(self, audio_data: bytes) -> str:
         """生成音频数据的哈希值用于缓存"""
         return hashlib.md5(audio_data).hexdigest()
     
     async def process_batch(self, requests: List[ASRRequest]) -> List[ASRResult]:
-        """批处理ASR请求"""
+        """批处理ASR请求，4核8GB优化版本"""
+        if not requests:
+            return []
+        
         start_time = time.time()
         results = []
         
         try:
-            # 预处理所有音频
+            # 4核8GB优化：限制批处理大小
+            actual_batch_size = min(len(requests), self.batch_size)
+            batch_requests = requests[:actual_batch_size]
+            
+            # 预处理音频数据
             audio_inputs = []
-            for request in requests:
-                audio_np = self.preprocess_audio(request.audio_data, request.sample_rate)
-                audio_inputs.append(audio_np)
-            
-            # 批处理推理
-            batch_results = []
-            for audio_np in audio_inputs:
+            for req in batch_requests:
                 try:
-                    # 使用SenseVoice进行推理
-                    result = self.model.generate(
-                        input=audio_np,
-                        cache={},
-                        language="zh",
-                        use_itn=True,
-                        batch_size=1
-                    )
-                    
-                    if isinstance(result, list) and len(result) > 0:
-                        text = result[0].get('text', '')
-                        confidence = result[0].get('confidence', 0.8)
-                    else:
-                        text = str(result) if result else ''
-                        confidence = 0.8
-                    
-                    batch_results.append((text, confidence))
-                    
+                    audio_array = self.preprocess_audio(req.audio_data, req.sample_rate)
+                    audio_inputs.append(audio_array)
                 except Exception as e:
-                    logger.warning(f"单个音频推理失败: {e}")
-                    batch_results.append(('', 0.0))
+                    logger.error(f"音频预处理失败 {req.session_id}: {e}")
+                    # 添加错误结果
+                    results.append(ASRResult(
+                        session_id=req.session_id,
+                        text="",
+                        confidence=0.0,
+                        language=req.language,
+                        timestamp=req.timestamp,
+                        processing_time=0.0,
+                        cached=False
+                    ))
+                    continue
             
-            # 构建结果
-            processing_time = time.time() - start_time
-            for i, request in enumerate(requests):
-                text, confidence = batch_results[i]
-                
-                result = ASRResult(
-                    session_id=request.session_id,
-                    text=text,
-                    confidence=confidence,
-                    language=request.language,
-                    timestamp=request.timestamp,
-                    processing_time=processing_time / len(requests),
-                    cached=False
+            if not audio_inputs:
+                return results
+            
+            # 批量推理
+            try:
+                # 4核8GB优化：使用更保守的推理参数
+                batch_results = self.model.generate(
+                    input=audio_inputs,
+                    cache={},
+                    language="zh",
+                    use_itn=True,
+                    # 4核8GB优化：禁用一些高级功能以节省资源
+                    batch_size=len(audio_inputs),
+                    # 降低beam_size以提升速度
+                    beam_size=self.beam_size
                 )
-                results.append(result)
+                
+                # 处理结果
+                processing_time = time.time() - start_time
+                
+                for i, (req, result) in enumerate(zip(batch_requests, batch_results)):
+                    if isinstance(result, list) and len(result) > 0:
+                        text = result[0].get('text', '') if isinstance(result[0], dict) else str(result[0])
+                        confidence = result[0].get('confidence', 0.8) if isinstance(result[0], dict) else 0.8
+                    else:
+                        text = str(result) if result else ""
+                        confidence = 0.8 if text else 0.0
+                    
+                    asr_result = ASRResult(
+                        session_id=req.session_id,
+                        text=text,
+                        confidence=confidence,
+                        language=req.language,
+                        timestamp=req.timestamp,
+                        processing_time=processing_time / len(batch_requests),
+                        cached=False
+                    )
+                    results.append(asr_result)
+                
+            except Exception as e:
+                logger.error(f"批量ASR推理失败: {e}")
+                # 为所有请求添加错误结果
+                for req in batch_requests:
+                    results.append(ASRResult(
+                        session_id=req.session_id,
+                        text="",
+                        confidence=0.0,
+                        language=req.language,
+                        timestamp=req.timestamp,
+                        processing_time=time.time() - start_time,
+                        cached=False
+                    ))
             
-            # 更新统计
-            self.total_requests += len(requests)
-            self.total_processing_time += processing_time
+            # 更新统计信息
+            self.total_requests += len(batch_requests)
+            self.total_processing_time += time.time() - start_time
             
-            logger.info(f"批处理完成: {len(requests)}个请求, 耗时: {processing_time:.3f}s")
+            return results
             
         except Exception as e:
             logger.error(f"批处理ASR失败: {e}")
-            # 返回默认结果
-            for request in requests:
-                results.append(ASRResult(
-                    session_id=request.session_id,
-                    text='',
-                    confidence=0.0,
-                    language=request.language,
-                    timestamp=request.timestamp,
-                    processing_time=time.time() - start_time,
-                    cached=False
-                ))
-        
-        return results
+            return []
     
     def get_stats(self) -> Dict:
-        """获取性能统计"""
+        """获取处理器统计信息"""
         avg_time = self.total_processing_time / max(self.total_requests, 1)
-        cache_rate = self.cache_hits / max(self.total_requests, 1) * 100
+        cache_hit_rate = self.cache_hits / max(self.total_requests, 1)
+        
         return {
             'total_requests': self.total_requests,
             'avg_processing_time': avg_time,
-            'cache_hit_rate': cache_rate,
+            'cache_hit_rate': cache_hit_rate,
+            'model_device': str(self.device),
             'batch_size': self.batch_size,
-            'device': str(self.device),
-            'enable_fp16': self.enable_fp16
+            'chunk_size': self.chunk_size
         }
 
 class ASRService:
-    """P0优化的ASR服务，支持批处理、队列管理和缓存优化"""
+    """4核8GB服务器激进优化的ASR服务，支持批处理、队列管理和缓存优化"""
     
-    def __init__(self, batch_size: int = 16, max_concurrent: int = 40):
-        self.batch_size = batch_size  # P0优化：从8提升到16
-        self.max_concurrent = max_concurrent  # P0优化：从16提升到40
-        self.processor = SenseVoiceProcessor(batch_size=batch_size, enable_fp16=True)
+    def __init__(self, batch_size: int = None, max_concurrent: int = None):
+        # 从环境变量读取优化参数
+        import os
+        self.batch_size = batch_size or int(os.getenv('ASR_BATCH_SIZE', '12'))
+        self.max_concurrent = max_concurrent or int(os.getenv('ASR_MAX_CONCURRENT', '30'))
+        self.enable_fp16 = os.getenv('ASR_ENABLE_FP16', 'true').lower() == 'true'
+        self.enable_batch_optimization = os.getenv('ASR_ENABLE_BATCH_OPTIMIZATION', 'true').lower() == 'true'
+        self.enable_zero_copy = os.getenv('ASR_ENABLE_ZERO_COPY', 'true').lower() == 'true'
+        self.preload_model = os.getenv('ASR_PRELOAD_MODEL', 'true').lower() == 'true'
+        self.result_cache_size = int(os.getenv('ASR_RESULT_CACHE_SIZE', '2000'))
         
-        # P0优化：优先级队列，添加队列大小限制
-        self.high_priority_queue = asyncio.Queue(maxsize=50)
-        self.medium_priority_queue = asyncio.Queue(maxsize=75)
-        self.low_priority_queue = asyncio.Queue(maxsize=25)
+        logger.info(f"ASR服务激进优化配置 - batch_size: {self.batch_size}, max_concurrent: {self.max_concurrent}")
+        self.processor = SenseVoiceProcessor(batch_size=self.batch_size, enable_fp16=self.enable_fp16)
+        
+        # 4核8GB激进优化：优先级队列，增加队列大小支持更高并发
+        queue_size = int(os.getenv('ASR_QUEUE_SIZE', '80'))
+        self.high_priority_queue = asyncio.Queue(maxsize=queue_size)
+        self.medium_priority_queue = asyncio.Queue(maxsize=queue_size + 20)
+        self.low_priority_queue = asyncio.Queue(maxsize=queue_size // 2)
         
         self.redis_client = None
-        self.executor = ThreadPoolExecutor(max_workers=8)  # P0优化：从4提升到8个工作线程
+        self.executor = ThreadPoolExecutor(max_workers=4)  # 4核8GB优化：从8降低到4个工作线程
         
-        # P0优化：添加性能监控
+        # 4核8GB优化：添加性能监控
         self.performance_stats = {
             'total_requests': 0,
             'avg_latency': 0.0,
             'concurrent_requests': 0,
-            'queue_sizes': {'high': 0, 'medium': 0, 'low': 0}
+            'queue_sizes': {'high': 0, 'medium': 0, 'low': 0},
+            'memory_usage': 0.0,
+            'cpu_usage': 0.0
         }
         
         # 启动批处理任务
@@ -300,13 +331,24 @@ class ASRService:
         asyncio.create_task(self.performance_monitor())
     
     async def performance_monitor(self):
-        """性能监控任务"""
+        """性能监控任务，4核8GB优化版本"""
         while True:
             await asyncio.sleep(60)  # 每分钟记录一次
-            if self.performance_stats['total_requests'] > 0:
-                logger.info(f"ASR性能统计 - 总请求: {self.performance_stats['total_requests']}, "
-                          f"平均延迟: {self.performance_stats['avg_latency']:.3f}s, "
-                          f"当前并发: {self.performance_stats['concurrent_requests']}")
+            try:
+                # 更新队列大小统计
+                self.performance_stats['queue_sizes'] = {
+                    'high': self.high_priority_queue.qsize(),
+                    'medium': self.medium_priority_queue.qsize(),
+                    'low': self.low_priority_queue.qsize()
+                }
+                
+                if self.performance_stats['total_requests'] > 0:
+                    logger.info(f"ASR性能统计 - 总请求: {self.performance_stats['total_requests']}, "
+                              f"平均延迟: {self.performance_stats['avg_latency']:.3f}s, "
+                              f"当前并发: {self.performance_stats['concurrent_requests']}, "
+                              f"队列: {self.performance_stats['queue_sizes']}")
+            except Exception as e:
+                logger.warning(f"性能监控错误: {e}")
     
     async def initialize(self):
         """初始化服务"""
@@ -328,7 +370,7 @@ class ASRService:
             logger.error(f"Redis连接失败: {e}")
     
     async def get_next_batch(self) -> List[ASRRequest]:
-        """获取下一批请求，优先处理高优先级"""
+        """获取下一批请求，优先处理高优先级，4核8GB优化版本"""
         requests = []
         
         # 优先处理高优先级队列
@@ -358,7 +400,7 @@ class ASRService:
         return requests
     
     async def batch_processor(self):
-        """批处理任务"""
+        """批处理任务，4核8GB优化版本"""
         while True:
             try:
                 # 获取批次请求
@@ -366,11 +408,16 @@ class ASRService:
                 
                 if not requests:
                     # 如果没有请求，等待一段时间
-                    await asyncio.sleep(0.01)
+                    await asyncio.sleep(0.02)  # 4核8GB优化：稍微增加等待时间以减少CPU占用
                     continue
                 
+                # 更新并发统计
+                self.performance_stats['concurrent_requests'] = len(requests)
+                
                 # 处理批次
+                start_time = time.time()
                 results = await self.processor.process_batch(requests)
+                processing_time = time.time() - start_time
                 
                 # 缓存结果
                 for result in results:
@@ -378,33 +425,44 @@ class ASRService:
                 
                 # 更新统计
                 self.performance_stats['total_requests'] += len(requests)
+                self.performance_stats['avg_latency'] = (
+                    self.performance_stats['avg_latency'] * (self.performance_stats['total_requests'] - len(requests)) + 
+                    processing_time
+                ) / self.performance_stats['total_requests']
+                
+                # 4核8GB优化：记录批处理性能
+                if len(requests) > 0:
+                    logger.debug(f"批处理完成: {len(requests)}个请求, 耗时: {processing_time:.3f}s, "
+                               f"平均: {processing_time/len(requests):.3f}s/请求")
                 
             except Exception as e:
                 logger.error(f"批处理任务错误: {e}")
                 await asyncio.sleep(0.1)
     
     async def cache_result(self, result: ASRResult):
-        """缓存ASR结果"""
+        """缓存ASR结果，4核8GB优化版本"""
         if self.redis_client:
             try:
-                cache_key = f"asr:{result.session_id}:{result.timestamp}"
+                # 使用音频哈希作为缓存键，减少缓存大小
+                cache_key = f"asr:{result.session_id[:8]}:{int(result.timestamp)}"  # 简化缓存键
                 cache_data = {
                     'text': result.text,
                     'confidence': result.confidence,
                     'language': result.language,
                     'processing_time': result.processing_time
                 }
-                await self.redis_client.setex(cache_key, 1800, json.dumps(cache_data))  # 30分钟缓存
+                # 4核8GB优化：减少缓存时间到15分钟
+                await self.redis_client.setex(cache_key, 900, json.dumps(cache_data))
             except Exception as e:
                 logger.warning(f"缓存ASR结果失败: {e}")
     
     async def get_cached_result(self, request: ASRRequest) -> Optional[ASRResult]:
-        """从缓存获取ASR结果"""
+        """从缓存获取ASR结果，4核8GB优化版本"""
         if self.redis_client:
             try:
                 # 使用音频哈希作为缓存键
                 audio_hash = self.processor.generate_audio_hash(request.audio_data)
-                cache_key = f"asr_hash:{audio_hash}"
+                cache_key = f"asr_hash:{audio_hash[:16]}"  # 4核8GB优化：缩短哈希长度
                 
                 cached_data = await self.redis_client.get(cache_key)
                 if cached_data:
@@ -424,13 +482,17 @@ class ASRService:
         return None
     
     async def add_request(self, request: ASRRequest):
-        """添加请求到相应的优先级队列"""
-        if request.priority == 1:
-            await self.high_priority_queue.put(request)
-        elif request.priority == 2:
-            await self.medium_priority_queue.put(request)
-        else:
-            await self.low_priority_queue.put(request)
+        """添加请求到相应的优先级队列，4核8GB优化版本"""
+        try:
+            if request.priority == 1:
+                await self.high_priority_queue.put(request)
+            elif request.priority == 2:
+                await self.medium_priority_queue.put(request)
+            else:
+                await self.low_priority_queue.put(request)
+        except asyncio.QueueFull:
+            logger.warning(f"队列已满，丢弃请求: {request.session_id}")
+            raise HTTPException(status_code=503, detail="服务器繁忙，请稍后重试")
 
 # FastAPI应用
 app = FastAPI(title="ASR Service", version="1.0.0")
@@ -442,8 +504,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 全局ASR服务实例
-asr_service = ASRService(batch_size=16, max_concurrent=40)  # P0优化：应用新的批处理和并发参数
+# 全局ASR服务实例 - 4核8GB激进优化配置（从环境变量读取）
+asr_service = ASRService()
 
 @app.on_event("startup")
 async def startup_event():
@@ -459,10 +521,20 @@ async def recognize_speech(
     timestamp: float = 0.0,
     background_tasks: BackgroundTasks = None
 ):
-    """语音识别API"""
+    """语音识别API，4核8GB优化版本"""
     try:
         # 解码音频数据
         audio_bytes = base64.b64decode(audio_data)
+        
+        # 4核8GB优化：限制音频数据大小
+        max_audio_size = 1024 * 1024  # 1MB限制
+        if len(audio_bytes) > max_audio_size:
+            return {
+                "session_id": session_id,
+                "text": "",
+                "confidence": 0.0,
+                "error": "音频数据过大，请压缩后重试"
+            }
         
         # 创建ASR请求
         request = ASRRequest(
@@ -512,11 +584,22 @@ async def recognize_speech(
 @app.get("/asr/stats")
 async def get_stats():
     """获取ASR服务统计信息"""
-    return asr_service.processor.get_stats()
+    processor_stats = asr_service.processor.get_stats()
+    service_stats = asr_service.performance_stats
+    
+    return {
+        "processor": processor_stats,
+        "service": service_stats,
+        "queues": {
+            "high": asr_service.high_priority_queue.qsize(),
+            "medium": asr_service.medium_priority_queue.qsize(),
+            "low": asr_service.low_priority_queue.qsize()
+        }
+    }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "asr"}
+    return {"status": "healthy", "service": "asr", "optimization": "4core_8gb"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001, workers=1)

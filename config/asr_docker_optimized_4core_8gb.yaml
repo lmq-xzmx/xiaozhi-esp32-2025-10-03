@@ -1,0 +1,245 @@
+# ASR Docker容器资源优化配置 - 4核8GB服务器专用
+# 目标: 在有限资源下最大化ASR容器性能和稳定性
+
+asr_docker_optimization:
+  # 容器资源分配
+  resource_allocation:
+    # CPU配置
+    cpu:
+      # 分配2.5核给主服务（包含ASR）
+      cpus_limit: "2.5"
+      cpus_reservation: "1.5"
+      # CPU亲和性 - 绑定到前3个核心
+      cpuset: "0-2"
+      # CPU调度策略
+      cpu_shares: 1024  # 高优先级
+      
+    # 内存配置
+    memory:
+      # 主服务内存限制（包含ASR）
+      memory_limit: "4G"
+      memory_reservation: "2G"
+      # 内存交换控制
+      mem_swappiness: 10  # 尽量避免使用swap
+      # 共享内存
+      shm_size: "2g"
+      
+    # 存储优化
+    storage:
+      # tmpfs配置 - 加速临时文件
+      tmpfs_size: "1G"
+      tmpfs_mount: "/tmp"
+      # 模型存储优化
+      model_volume_type: "bind"  # 直接绑定挂载
+      
+  # 容器运行时优化
+  runtime_optimization:
+    # 安全配置
+    security:
+      seccomp: "unconfined"  # 提升性能
+      
+    # 网络优化
+    network:
+      mtu: 1500
+      driver: "bridge"
+      
+    # 文件描述符限制
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+      memlock:
+        soft: -1
+        hard: -1
+      nproc:
+        soft: 32768
+        hard: 32768
+        
+  # 环境变量优化
+  environment_optimization:
+    # Python运行时优化
+    python_optimization:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONIOENCODING: "utf-8"
+      PYTHONUTF8: "1"
+      
+    # 线程控制
+    thread_control:
+      OMP_NUM_THREADS: "3"
+      MKL_NUM_THREADS: "3"
+      NUMBA_NUM_THREADS: "3"
+      
+    # 内存管理
+    memory_management:
+      MALLOC_ARENA_MAX: "2"
+      MALLOC_MMAP_THRESHOLD_: "131072"
+      
+    # ASR特定优化
+    asr_specific:
+      SENSEVOICE_MODEL_CACHE: "1"
+      SENSEVOICE_PRELOAD: "1"
+      ASR_MAX_MEMORY_MB: "1500"
+      ASR_ENABLE_MEMORY_POOL: "true"
+      ASR_GC_INTERVAL: "30"
+      
+  # 健康检查配置
+  health_check:
+    # ASR服务健康检查
+    asr_health:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: "30s"
+      timeout: "10s"
+      retries: 3
+      start_period: "60s"
+      
+  # 日志配置
+  logging:
+    # 日志驱动
+    driver: "json-file"
+    options:
+      max_size: "100m"
+      max_file: "3"
+      
+  # 重启策略
+  restart_policy:
+    condition: "always"
+    delay: "10s"
+    max_attempts: 5
+    window: "120s"
+    
+  # 监控配置
+  monitoring:
+    # 资源监控
+    resource_monitoring:
+      enable_stats: true
+      stats_interval: "10s"
+      
+    # 性能指标
+    performance_metrics:
+      cpu_usage_threshold: 80
+      memory_usage_threshold: 85
+      
+  # 优化建议
+  optimization_recommendations:
+    # 立即优化
+    immediate:
+      - "应用CPU亲和性绑定"
+      - "启用内存池管理"
+      - "配置tmpfs加速临时文件"
+      - "优化文件描述符限制"
+      
+    # 中期优化
+    medium_term:
+      - "考虑使用专用ASR容器"
+      - "实施容器资源隔离"
+      - "优化网络配置"
+      
+    # 长期优化
+    long_term:
+      - "迁移到Kubernetes"
+      - "实施自动扩缩容"
+      - "使用GPU加速"
+
+# Docker Compose配置模板
+docker_compose_template:
+  version: "3.8"
+  services:
+    xiaozhi-esp32-server:
+      # 资源限制
+      deploy:
+        resources:
+          limits:
+            cpus: "2.5"
+            memory: "4G"
+          reservations:
+            cpus: "1.5"
+            memory: "2G"
+      
+      # CPU亲和性
+      cpuset: "0-2"
+      
+      # 内存配置
+      mem_swappiness: 10
+      shm_size: "2g"
+      
+      # 安全配置
+      security_opt:
+        - "seccomp:unconfined"
+        
+      # 文件描述符限制
+      ulimits:
+        nofile:
+          soft: 65536
+          hard: 65536
+        memlock:
+          soft: -1
+          hard: -1
+        nproc:
+          soft: 32768
+          hard: 32768
+          
+      # tmpfs挂载
+      volumes:
+        - type: tmpfs
+          target: /tmp
+          tmpfs:
+            size: 1G
+            
+      # 环境变量
+      environment:
+        # Python优化
+        - PYTHONUNBUFFERED=1
+        - PYTHONDONTWRITEBYTECODE=1
+        - PYTHONIOENCODING=utf-8
+        - PYTHONUTF8=1
+        
+        # 线程控制
+        - OMP_NUM_THREADS=3
+        - MKL_NUM_THREADS=3
+        - NUMBA_NUM_THREADS=3
+        
+        # 内存管理
+        - MALLOC_ARENA_MAX=2
+        - MALLOC_MMAP_THRESHOLD_=131072
+        
+        # ASR优化
+        - SENSEVOICE_MODEL_CACHE=1
+        - SENSEVOICE_PRELOAD=1
+        - ASR_MAX_MEMORY_MB=1500
+        - ASR_ENABLE_MEMORY_POOL=true
+        - ASR_GC_INTERVAL=30
+        - ASR_CACHE_SIZE_MB=512
+        - ASR_ENABLE_SEMANTIC_CACHE=true
+        - ASR_CACHE_TTL=900
+        - ASR_MAX_CONCURRENT=20
+        - ASR_BATCH_SIZE=8
+        - ASR_WORKER_THREADS=4
+        - ASR_CHUNK_SIZE=640
+        - ASR_OVERLAP_SIZE=64
+        - ASR_QUEUE_SIZE=50
+
+# 部署脚本
+deployment_script: |
+  #!/bin/bash
+  # ASR Docker优化部署脚本
+  
+  echo "开始部署ASR优化配置..."
+  
+  # 1. 停止现有服务
+  docker-compose down
+  
+  # 2. 清理资源
+  docker system prune -f
+  
+  # 3. 应用新配置
+  docker-compose up -d
+  
+  # 4. 验证部署
+  sleep 30
+  docker-compose ps
+  
+  # 5. 检查ASR服务状态
+  curl -f http://localhost:8001/health || echo "ASR服务未就绪"
+  
+  echo "ASR优化配置部署完成"

@@ -357,6 +357,153 @@ def get_chat_statistics():
             'error': str(e)
         }), 500
 
+@app.route('/api/chat-records/<device_id>', methods=['GET'])
+def get_device_chat_records(device_id):
+    """获取指定设备的聊天记录"""
+    try:
+        # 获取分页参数
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        offset = (page - 1) * per_page
+        
+        # 获取聊天记录
+        query = """
+        SELECT 
+            c.id,
+            c.device_id,
+            c.student_id,
+            c.agent_id,
+            c.chat_type,
+            c.content,
+            c.created_at,
+            c.updated_at,
+            d.mac_address,
+            d.alias as device_alias,
+            u.real_name as student_name,
+            a.agent_name
+        FROM ai_agent_chat_history c
+        LEFT JOIN ai_device d ON c.device_id = d.id
+        LEFT JOIN sys_user u ON c.student_id = u.id
+        LEFT JOIN ai_agent a ON c.agent_id = a.id
+        WHERE c.device_id = %s
+        ORDER BY c.created_at DESC
+        LIMIT %s OFFSET %s
+        """
+        chat_records = execute_query(query, (device_id, per_page, offset))
+        
+        # 获取总记录数
+        count_query = """
+        SELECT COUNT(*) as total
+        FROM ai_agent_chat_history
+        WHERE device_id = %s
+        """
+        total_result = execute_query(count_query, (device_id,), fetch_one=True)
+        total = total_result['total'] if total_result else 0
+        
+        # 处理数据格式
+        for record in chat_records:
+            if record['created_at']:
+                record['created_at'] = record['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            if record['updated_at']:
+                record['updated_at'] = record['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'records': chat_records,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'pages': (total + per_page - 1) // per_page
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"获取设备聊天记录失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/export/chat-data/<device_id>', methods=['GET'])
+def export_chat_data(device_id):
+    """导出指定设备的聊天数据"""
+    try:
+        # 获取设备信息
+        device_query = """
+        SELECT 
+            d.id,
+            d.mac_address,
+            d.alias,
+            d.agent_id,
+            d.student_id,
+            d.bind_status,
+            d.bind_time,
+            d.last_connected_at,
+            a.agent_name,
+            u.real_name as student_name,
+            u.username as student_username
+        FROM ai_device d
+        LEFT JOIN ai_agent a ON d.agent_id = a.id
+        LEFT JOIN sys_user u ON d.student_id = u.id
+        WHERE d.id = %s
+        """
+        device_info = execute_query(device_query, (device_id,), fetch_one=True)
+        
+        if not device_info:
+            return jsonify({
+                'success': False,
+                'error': f'设备 {device_id} 不存在'
+            }), 404
+        
+        # 获取所有聊天记录
+        chat_query = """
+        SELECT 
+            c.id,
+            c.device_id,
+            c.student_id,
+            c.agent_id,
+            c.chat_type,
+            c.content,
+            c.created_at,
+            c.updated_at
+        FROM ai_agent_chat_history c
+        WHERE c.device_id = %s
+        ORDER BY c.created_at ASC
+        """
+        chat_records = execute_query(chat_query, (device_id,))
+        
+        # 处理数据格式
+        if device_info['bind_time']:
+            device_info['bind_time'] = device_info['bind_time'].strftime('%Y-%m-%d %H:%M:%S')
+        if device_info['last_connected_at']:
+            device_info['last_connected_at'] = device_info['last_connected_at'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        for record in chat_records:
+            if record['created_at']:
+                record['created_at'] = record['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            if record['updated_at']:
+                record['updated_at'] = record['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        export_data = {
+            "device_info": device_info,
+            "chat_records": chat_records,
+            "export_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "total_records": len(chat_records)
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': export_data
+        })
+    except Exception as e:
+        logger.error(f"导出聊天数据失败: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/summary', methods=['GET'])
 def get_summary():
     """获取数据摘要"""
@@ -508,15 +655,17 @@ if __name__ == '__main__':
     print("=" * 60)
     print("服务地址: http://localhost:8091")
     print("API文档:")
-    print("  GET  /api/health              - 健康检查")
-    print("  GET  /api/devices             - 获取设备列表")
-    print("  GET  /api/agents              - 获取智能体列表")
-    print("  GET  /api/students            - 获取学生列表")
-    print("  GET  /api/bind-relations      - 获取绑定关系")
-    print("  GET  /api/chat-statistics     - 获取聊天统计")
-    print("  GET  /api/summary             - 获取数据摘要")
-    print("  POST /api/device/<id>/bind    - 绑定设备")
-    print("  POST /api/device/<id>/unbind  - 解绑设备")
+    print("  GET  /api/health                        - 健康检查")
+    print("  GET  /api/devices                       - 获取设备列表")
+    print("  GET  /api/agents                        - 获取智能体列表")
+    print("  GET  /api/students                      - 获取学生列表")
+    print("  GET  /api/bind-relations                - 获取绑定关系")
+    print("  GET  /api/chat-statistics               - 获取聊天统计")
+    print("  GET  /api/chat-records/<device_id>      - 获取设备聊天记录")
+    print("  GET  /api/export/chat-data/<device_id>  - 导出设备聊天数据")
+    print("  GET  /api/summary                       - 获取数据摘要")
+    print("  POST /api/device/<id>/bind              - 绑定设备")
+    print("  POST /api/device/<id>/unbind            - 解绑设备")
     print("=" * 60)
     
     app.run(host='0.0.0.0', port=8091, debug=True)

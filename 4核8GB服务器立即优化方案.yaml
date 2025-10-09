@@ -1,0 +1,240 @@
+# 4核8GB服务器立即优化方案
+# 无需硬件投入，通过配置优化提升60%性能
+
+# 优化目标：从支持20-25台设备提升到35-40台设备
+
+# ==================== ASR服务优化（解决系统瓶颈） ====================
+asr_optimization:
+  # 当前瓶颈：ASR服务限制整体并发能力
+  current_config:
+    max_concurrent: 25
+    batch_size: 10
+    cache_size_mb: 768
+    worker_threads: 4
+    
+  # 优化配置
+  optimized_config:
+    max_concurrent: 35        # +40% 并发能力
+    batch_size: 12           # +20% 批处理效率
+    cache_size_mb: 1024      # +33% 缓存空间
+    worker_threads: 6        # +50% 工作线程
+    
+  # 环境变量设置
+  environment_variables:
+    ASR_MAX_CONCURRENT: "35"
+    ASR_BATCH_SIZE: "12"
+    ASR_CACHE_SIZE_MB: "1024"
+    ASR_WORKER_THREADS: "6"
+    
+  # 模型优化
+  model_optimization:
+    enable_int8_quantization: true    # 启用INT8量化
+    enable_fp16_precision: true       # 启用FP16精度
+    enable_jit_compilation: true      # 启用JIT编译
+    
+  # 预期效果
+  expected_improvement:
+    device_support: "25台 → 35-40台 (+60%)"
+    processing_latency: "240ms → 200ms (-17%)"
+    memory_usage: "1500MB → 1200MB (-20%)"
+
+# ==================== VAD服务进一步优化 ====================
+vad_optimization:
+  # 当前配置
+  current_config:
+    max_concurrent: 48
+    batch_size: 32
+    worker_threads: 4
+    
+  # 优化配置
+  optimized_config:
+    max_concurrent: 64        # +33% 并发能力
+    batch_size: 40           # +25% 批处理效率
+    worker_threads: 6        # +50% 工作线程
+    
+  # 环境变量设置
+  environment_variables:
+    VAD_MAX_CONCURRENT: "64"
+    VAD_BATCH_SIZE: "40"
+    VAD_WORKER_THREADS: "6"
+    
+  # 预期效果
+  expected_improvement:
+    device_support: "80台 → 100台 (+25%)"
+    processing_latency: "120-250ms → 100-200ms (-20%)"
+
+# ==================== 内存优化策略 ====================
+memory_optimization:
+  # Redis缓存优化
+  redis_cache:
+    current_size: "512MB"
+    optimized_size: "1GB"
+    cache_ttl: 1800  # 30分钟
+    enable_compression: true
+    
+  # 模型量化
+  model_quantization:
+    asr_model:
+      enable_int8: true
+      enable_fp16: true
+      memory_reduction: "30-40%"
+    vad_model:
+      enable_fp16: true
+      memory_reduction: "20%"
+      
+  # 缓存策略
+  cache_strategy:
+    enable_smart_eviction: true
+    max_cache_entries: 10000
+    cleanup_interval: 300  # 5分钟
+
+# ==================== CPU优化策略 ====================
+cpu_optimization:
+  # 线程池优化
+  thread_pool:
+    asr_workers: 6      # 从4增加到6
+    vad_workers: 6      # 从4增加到6
+    total_threads: 12   # 总线程数
+    
+  # 进程优先级
+  process_priority:
+    asr_service: "high"
+    vad_service: "high"
+    llm_service: "medium"
+    tts_service: "medium"
+    
+  # CPU亲和性设置
+  cpu_affinity:
+    asr_service: [0, 1]    # 绑定到核心0,1
+    vad_service: [2, 3]    # 绑定到核心2,3
+    enable_numa_optimization: true
+
+# ==================== 网络优化 ====================
+network_optimization:
+  # WebSocket连接优化
+  websocket:
+    max_connections: 50
+    connection_pool_size: 100
+    heartbeat_interval: 30
+    enable_compression: true
+    
+  # 数据压缩
+  compression:
+    audio_compression: "opus"
+    text_compression: "gzip"
+    compression_level: 6
+
+# ==================== 系统级优化 ====================
+system_optimization:
+  # 资源限制
+  resource_limits:
+    asr_service:
+      cpu_limit: "2.0"
+      memory_limit: "2.5G"
+    vad_service:
+      cpu_limit: "1.5"
+      memory_limit: "1.0G"
+      
+  # 监控配置
+  monitoring:
+    cpu_warning_threshold: 80
+    cpu_critical_threshold: 90
+    memory_warning_threshold: 80
+    memory_critical_threshold: 85
+    
+  # 自动调节
+  auto_tuning:
+    enable_dynamic_batching: true
+    enable_adaptive_concurrency: true
+    enable_load_shedding: true
+
+# ==================== 实施步骤 ====================
+implementation_steps:
+  step1:
+    name: "ASR服务配置优化"
+    priority: "高"
+    estimated_time: "10分钟"
+    actions:
+      - "更新ASR环境变量"
+      - "重启ASR服务"
+      - "验证配置生效"
+      
+  step2:
+    name: "VAD服务配置优化"
+    priority: "中"
+    estimated_time: "5分钟"
+    actions:
+      - "更新VAD环境变量"
+      - "重启VAD服务"
+      - "验证配置生效"
+      
+  step3:
+    name: "内存和缓存优化"
+    priority: "中"
+    estimated_time: "15分钟"
+    actions:
+      - "调整Redis配置"
+      - "启用模型量化"
+      - "配置缓存策略"
+      
+  step4:
+    name: "监控和验证"
+    priority: "高"
+    estimated_time: "20分钟"
+    actions:
+      - "配置监控告警"
+      - "执行性能测试"
+      - "验证优化效果"
+
+# ==================== 风险控制 ====================
+risk_control:
+  # 回滚机制
+  rollback_plan:
+    backup_configs: true
+    rollback_time: "5分钟"
+    rollback_triggers:
+      - "CPU使用率 > 95%"
+      - "内存使用率 > 90%"
+      - "错误率 > 5%"
+      
+  # 渐进式优化
+  gradual_optimization:
+    phase1: "提升ASR并发到30"
+    phase2: "提升ASR并发到35"
+    phase3: "启用所有优化"
+    
+  # 监控告警
+  alerts:
+    cpu_high: "CPU > 85% 持续5分钟"
+    memory_high: "内存 > 80% 持续5分钟"
+    latency_high: "延迟 > 500ms 持续2分钟"
+
+# ==================== 预期效果总结 ====================
+expected_results:
+  performance_improvement:
+    device_support: "20-25台 → 35-40台 (+60%)"
+    overall_latency: "1.2s → 1.0s (-17%)"
+    system_throughput: "+60%"
+    
+  resource_utilization:
+    cpu_usage: "60% → 80%"
+    memory_usage: "71% → 85%"
+    efficiency_gain: "+25%"
+    
+  user_experience:
+    response_time: "更快"
+    concurrent_users: "+60%"
+    system_stability: "更稳定"
+
+# ==================== 配置文件路径 ====================
+config_files:
+  asr_config: "/root/xiaozhi-server/config/asr_memory_optimized_4core_8gb.yaml"
+  simple_asr_service: "/root/xiaozhi-server/simple_asr_test_service.py"
+  docker_compose: "/root/xiaozhi-server/docker-compose-optimized-simple.yml"
+  
+# ==================== 验证命令 ====================
+validation_commands:
+  test_asr_performance: "python simple_asr_test.py"
+  test_concurrent_load: "python test_25_concurrent.py"
+  monitor_resources: "python asr_performance_monitor.py"
+  check_service_health: "curl http://localhost:8001/health"

@@ -1,0 +1,180 @@
+# ASR内存和缓存优化配置 - 4核8GB服务器专用
+# 目标: 在有限资源下最大化ASR性能，支持20-25台设备
+
+asr_memory_optimization:
+  # 内存管理策略
+  memory_management:
+    # 总内存分配 (1.5GB硬限制)
+    max_memory_mb: 1500  # 从2GB降到1.5GB
+    memory_warning_threshold: 1200  # 1.2GB警告
+    memory_critical_threshold: 1400  # 1.4GB严重警告
+    
+    # 内存池配置
+    memory_pools:
+      audio_buffer_pool:
+        size: 32  # 从64降到32，减少内存占用
+        buffer_size_kb: 64  # 每个缓冲区64KB
+        prealloc: true  # 预分配内存池
+        
+      model_cache_pool:
+        size: 800  # 800MB模型缓存
+        enable_swap: false  # 禁用交换，保持性能
+        
+      result_cache_pool:
+        size: 200  # 200MB结果缓存
+        max_entries: 2000  # 最大2000个缓存条目
+        
+    # 垃圾回收优化
+    gc_optimization:
+      enable_aggressive_gc: true  # 启用积极垃圾回收
+      gc_interval_seconds: 30  # 30秒GC间隔
+      memory_pressure_threshold: 0.85  # 85%内存压力触发GC
+      
+  # 缓存策略优化
+  cache_strategy:
+    # Redis缓存配置
+    redis_cache:
+      enable: true
+      max_memory: "512MB"  # Redis最大512MB
+      eviction_policy: "allkeys-lru"  # LRU淘汰策略
+      key_prefix: "asr_4c8g"  # 缓存键前缀
+      
+      # 缓存分层
+      cache_levels:
+        l1_memory:
+          size_mb: 128  # 128MB L1内存缓存
+          ttl_seconds: 300  # 5分钟TTL
+          max_entries: 1000
+          
+        l2_redis:
+          size_mb: 384  # 384MB L2 Redis缓存
+          ttl_seconds: 900  # 15分钟TTL
+          max_entries: 5000
+          
+    # 智能缓存策略
+    intelligent_caching:
+      # 音频哈希缓存
+      audio_hash_cache:
+        enable: true
+        hash_algorithm: "md5_short"  # 使用短MD5减少内存
+        hash_length: 16  # 16字符哈希
+        collision_detection: true
+        
+      # 语义缓存
+      semantic_cache:
+        enable: true
+        similarity_threshold: 0.85  # 85%相似度
+        max_semantic_entries: 500  # 最大500个语义缓存
+        
+      # 频率缓存
+      frequency_cache:
+        enable: true
+        min_frequency: 3  # 最少3次访问才缓存
+        decay_factor: 0.9  # 频率衰减因子
+        
+  # 模型内存优化
+  model_optimization:
+    # 模型量化
+    quantization:
+      enable_int8: true  # 启用INT8量化
+      enable_fp16: true  # 启用FP16量化
+      dynamic_quantization: true  # 动态量化
+      
+    # 模型分片
+    model_sharding:
+      enable: false  # 4核8GB不适合分片
+      
+    # 模型缓存
+    model_cache:
+      enable_persistent_cache: true  # 持久化模型缓存
+      cache_location: "/tmp/asr_model_cache"
+      max_cache_size_mb: 800  # 800MB模型缓存
+      
+  # 音频处理内存优化
+  audio_processing:
+    # 音频缓冲区优化
+    buffer_optimization:
+      chunk_size: 640  # 从800降到640，减少内存
+      overlap_size: 64  # 从80降到64
+      max_buffer_chunks: 20  # 最大20个音频块
+      
+    # 流式处理优化
+    streaming_optimization:
+      enable_zero_copy: true  # 启用零拷贝
+      reuse_buffers: true  # 重用缓冲区
+      lazy_allocation: true  # 延迟分配
+      
+    # 音频压缩
+    audio_compression:
+      enable_realtime_compression: true  # 实时压缩
+      compression_level: 3  # 中等压缩级别
+      
+  # 并发内存管理
+  concurrency_memory:
+    # 线程池内存
+    thread_pool:
+      max_workers: 4  # 4个工作线程
+      thread_stack_size_kb: 512  # 512KB线程栈
+      
+    # 队列内存管理
+    queue_management:
+      max_queue_size: 50  # 从150降到50
+      queue_memory_limit_mb: 100  # 100MB队列内存限制
+      
+    # 连接池内存
+    connection_pool:
+      max_connections: 20  # 从50降到20
+      connection_buffer_size_kb: 32  # 32KB连接缓冲区
+      
+  # 监控和调优
+  monitoring:
+    # 内存监控
+    memory_monitoring:
+      enable: true
+      monitor_interval_seconds: 10  # 10秒监控间隔
+      log_memory_usage: true
+      alert_on_high_usage: true
+      
+    # 性能指标
+    performance_metrics:
+      track_cache_hit_rate: true
+      track_memory_fragmentation: true
+      track_gc_performance: true
+      
+    # 自动调优
+    auto_tuning:
+      enable: true
+      tune_cache_size: true
+      tune_buffer_size: true
+      tune_gc_frequency: true
+      
+  # 故障恢复
+  failover:
+    # 内存不足处理
+    oom_handling:
+      enable_graceful_degradation: true  # 优雅降级
+      reduce_cache_on_pressure: true  # 内存压力时减少缓存
+      emergency_gc_threshold: 0.95  # 95%内存使用触发紧急GC
+      
+    # 缓存恢复
+    cache_recovery:
+      enable_cache_warmup: true  # 启用缓存预热
+      warmup_percentage: 50  # 预热50%缓存
+      recovery_timeout_seconds: 60  # 60秒恢复超时
+
+# 环境变量配置
+environment_variables:
+  # 内存相关
+  ASR_MAX_MEMORY_MB: "1500"
+  ASR_ENABLE_MEMORY_POOL: "true"
+  ASR_GC_INTERVAL: "30"
+  
+  # 缓存相关
+  ASR_CACHE_SIZE_MB: "768"
+  ASR_ENABLE_SEMANTIC_CACHE: "true"
+  ASR_CACHE_TTL: "900"
+  
+  # 性能相关
+  ASR_MAX_CONCURRENT: "25"
+  ASR_BATCH_SIZE: "10"
+  ASR_WORKER_THREADS: "4"
