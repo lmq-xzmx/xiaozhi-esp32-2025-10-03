@@ -35,9 +35,9 @@ DB_CONFIG = {
 def get_db_connection():
     """获取数据库连接"""
     try:
-        # 尝试连接Docker容器中的MySQL (使用容器IP)
+        # 尝试连接Docker容器中的MySQL (使用正确的容器IP)
         config = DB_CONFIG.copy()
-        config['host'] = '172.20.0.3'
+        config['host'] = '172.20.0.5'  # 更新为正确的MySQL容器IP
         connection = pymysql.connect(**config)
         return connection
     except Exception as e:
