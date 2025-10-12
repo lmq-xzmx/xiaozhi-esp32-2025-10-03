@@ -1,0 +1,21 @@
+{
+  "data": {
+    "chat_records": [],
+    "device_info": {
+      "agent_id": "2cd5d56981864950a6f1ee7aef598c1a",
+      "agent_name": "\u5c0fU0",
+      "alias": null,
+      "bind_status": 0,
+      "bind_time": null,
+      "id": "58:8c:81:65:50:9c",
+      "last_connected_at": "2025-10-11 14:07:35",
+      "mac_address": "58:8c:81:65:50:9c",
+      "student_id": null,
+      "student_name": null,
+      "student_username": null
+    },
+    "export_time": "2025-10-11 16:07:18",
+    "total_records": 0
+  },
+  "success": true
+}

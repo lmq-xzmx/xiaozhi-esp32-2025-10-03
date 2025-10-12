@@ -1,0 +1,1336 @@
+{
+  "agents": [
+    {
+      "id": "agent_001",
+      "name": "小智助手",
+      "description": "智能学习助手"
+    },
+    {
+      "id": "agent_002",
+      "name": "英语老师",
+      "description": "专业英语教学助手"
+    },
+    {
+      "id": "agent_003",
+      "name": "数学导师",
+      "description": "数学学习指导助手"
+    },
+    {
+      "id": "agent_004",
+      "name": "科学探索",
+      "description": "科学知识普及助手"
+    }
+  ],
+  "students": [
+    {
+      "id": "stu_001",
+      "name": "张小明",
+      "class": "三年级1班",
+      "grade": "三年级"
+    },
+    {
+      "id": "stu_002",
+      "name": "李小红",
+      "class": "三年级1班",
+      "grade": "三年级"
+    },
+    {
+      "id": "stu_003",
+      "name": "王小华",
+      "class": "三年级2班",
+      "grade": "三年级"
+    },
+    {
+      "id": "stu_004",
+      "name": "刘小强",
+      "class": "四年级1班",
+      "grade": "四年级"
+    },
+    {
+      "id": "stu_005",
+      "name": "陈小美",
+      "class": "四年级1班",
+      "grade": "四年级"
+    },
+    {
+      "id": "stu_006",
+      "name": "赵小亮",
+      "class": "四年级2班",
+      "grade": "四年级"
+    }
+  ],
+  "devices": [
+    {
+      "id": "dev_001",
+      "mac_address": "AA:BB:CC:DD:EE:01",
+      "device_alias": "智能设备01",
+      "agent_id": "agent_004",
+      "is_online": false,
+      "last_connected_at": "2025-10-03 10:33:42",
+      "created_at": "2025-09-03 14:23:38"
+    },
+    {
+      "id": "dev_002",
+      "mac_address": "AA:BB:CC:DD:EE:02",
+      "device_alias": "智能设备02",
+      "agent_id": "agent_003",
+      "is_online": false,
+      "last_connected_at": "2025-10-06 01:09:12",
+      "created_at": "2025-09-01 21:15:55"
+    },
+    {
+      "id": "dev_003",
+      "mac_address": "AA:BB:CC:DD:EE:03",
+      "device_alias": "智能设备03",
+      "agent_id": "agent_004",
+      "is_online": true,
+      "last_connected_at": "2025-10-01 17:24:17",
+      "created_at": "2025-07-31 15:53:06"
+    },
+    {
+      "id": "dev_004",
+      "mac_address": "AA:BB:CC:DD:EE:04",
+      "device_alias": "智能设备04",
+      "agent_id": "agent_001",
+      "is_online": true,
+      "last_connected_at": "2025-10-02 06:57:20",
+      "created_at": "2025-08-07 07:36:04"
+    },
+    {
+      "id": "dev_005",
+      "mac_address": "AA:BB:CC:DD:EE:05",
+      "device_alias": "智能设备05",
+      "agent_id": "agent_004",
+      "is_online": false,
+      "last_connected_at": "2025-10-04 17:46:31",
+      "created_at": "2025-07-30 18:05:19"
+    },
+    {
+      "id": "dev_006",
+      "mac_address": "AA:BB:CC:DD:EE:06",
+      "device_alias": "智能设备06",
+      "agent_id": "agent_001",
+      "is_online": true,
+      "last_connected_at": "2025-10-08 16:37:21",
+      "created_at": "2025-07-24 19:29:13"
+    },
+    {
+      "id": "dev_007",
+      "mac_address": "AA:BB:CC:DD:EE:07",
+      "device_alias": "智能设备07",
+      "agent_id": "agent_002",
+      "is_online": false,
+      "last_connected_at": "2025-10-05 21:30:10",
+      "created_at": "2025-09-03 22:13:21"
+    },
+    {
+      "id": "dev_008",
+      "mac_address": "AA:BB:CC:DD:EE:08",
+      "device_alias": "智能设备08",
+      "agent_id": "agent_003",
+      "is_online": false,
+      "last_connected_at": "2025-10-05 10:34:56",
+      "created_at": "2025-08-12 19:56:43"
+    },
+    {
+      "id": "dev_009",
+      "mac_address": "AA:BB:CC:DD:EE:09",
+      "device_alias": "智能设备09",
+      "agent_id": "agent_001",
+      "is_online": true,
+      "last_connected_at": "2025-10-02 04:31:51",
+      "created_at": "2025-07-23 14:45:58"
+    },
+    {
+      "id": "dev_010",
+      "mac_address": "AA:BB:CC:DD:EE:0A",
+      "device_alias": "智能设备10",
+      "agent_id": "agent_002",
+      "is_online": true,
+      "last_connected_at": "2025-10-02 10:35:13",
+      "created_at": "2025-08-23 14:14:09"
+    },
+    {
+      "id": "dev_011",
+      "mac_address": "AA:BB:CC:DD:EE:0B",
+      "device_alias": "智能设备11",
+      "agent_id": "agent_001",
+      "is_online": true,
+      "last_connected_at": "2025-10-07 16:38:36",
+      "created_at": "2025-08-29 08:54:42"
+    },
+    {
+      "id": "dev_012",
+      "mac_address": "AA:BB:CC:DD:EE:0C",
+      "device_alias": "智能设备12",
+      "agent_id": "agent_002",
+      "is_online": false,
+      "last_connected_at": "2025-10-08 17:39:02",
+      "created_at": "2025-07-24 18:20:46"
+    },
+    {
+      "id": "dev_013",
+      "mac_address": "AA:BB:CC:DD:EE:0D",
+      "device_alias": "智能设备13",
+      "agent_id": "agent_001",
+      "is_online": true,
+      "last_connected_at": "2025-10-05 07:15:39",
+      "created_at": "2025-08-18 06:51:21"
+    },
+    {
+      "id": "dev_014",
+      "mac_address": "AA:BB:CC:DD:EE:0E",
+      "device_alias": "智能设备14",
+      "agent_id": "agent_001",
+      "is_online": false,
+      "last_connected_at": "2025-10-05 10:43:56",
+      "created_at": "2025-07-19 09:37:34"
+    },
+    {
+      "id": "dev_015",
+      "mac_address": "AA:BB:CC:DD:EE:0F",
+      "device_alias": "智能设备15",
+      "agent_id": "agent_003",
+      "is_online": false,
+      "last_connected_at": "2025-10-05 06:37:54",
+      "created_at": "2025-08-19 17:30:59"
+    },
+    {
+      "id": "dev_016",
+      "mac_address": "AA:BB:CC:DD:EE:10",
+      "device_alias": "智能设备16",
+      "agent_id": "agent_001",
+      "is_online": true,
+      "last_connected_at": "2025-10-02 09:23:37",
+      "created_at": "2025-09-07 19:43:11"
+    },
+    {
+      "id": "dev_017",
+      "mac_address": "AA:BB:CC:DD:EE:11",
+      "device_alias": "智能设备17",
+      "agent_id": "agent_004",
+      "is_online": true,
+      "last_connected_at": "2025-10-04 13:31:32",
+      "created_at": "2025-08-13 10:13:21"
+    },
+    {
+      "id": "dev_018",
+      "mac_address": "AA:BB:CC:DD:EE:12",
+      "device_alias": "智能设备18",
+      "agent_id": "agent_003",
+      "is_online": false,
+      "last_connected_at": "2025-10-02 02:05:27",
+      "created_at": "2025-08-15 07:23:02"
+    },
+    {
+      "id": "dev_019",
+      "mac_address": "AA:BB:CC:DD:EE:13",
+      "device_alias": "智能设备19",
+      "agent_id": "agent_003",
+      "is_online": true,
+      "last_connected_at": "2025-10-01 13:39:57",
+      "created_at": "2025-08-22 17:13:47"
+    },
+    {
+      "id": "dev_020",
+      "mac_address": "AA:BB:CC:DD:EE:14",
+      "device_alias": "智能设备20",
+      "agent_id": "agent_003",
+      "is_online": false,
+      "last_connected_at": "2025-10-02 07:56:23",
+      "created_at": "2025-08-29 05:21:27"
+    }
+  ],
+  "device_bindings": [
+    {
+      "device_id": "dev_016",
+      "student_id": "stu_001",
+      "bind_time": "2025-08-28 20:53:47",
+      "unbind_time": "2025-09-06 20:53:47",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 9
+    },
+    {
+      "device_id": "dev_002",
+      "student_id": "stu_001",
+      "bind_time": "2025-08-18 06:01:13",
+      "unbind_time": "2025-09-14 06:01:13",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 27
+    },
+    {
+      "device_id": "dev_007",
+      "student_id": "stu_001",
+      "bind_time": "2025-10-01 19:05:33",
+      "unbind_time": null,
+      "bind_status": "bound",
+      "is_current": true,
+      "bind_duration_days": 6
+    },
+    {
+      "device_id": "dev_009",
+      "student_id": "stu_002",
+      "bind_time": "2025-08-18 19:47:42",
+      "unbind_time": "2025-09-06 19:47:42",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 19
+    },
+    {
+      "device_id": "dev_016",
+      "student_id": "stu_002",
+      "bind_time": "2025-09-14 20:50:37",
+      "unbind_time": "2025-10-01 20:50:37",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 17
+    },
+    {
+      "device_id": "dev_017",
+      "student_id": "stu_002",
+      "bind_time": "2025-09-17 19:36:46",
+      "unbind_time": null,
+      "bind_status": "bound",
+      "is_current": true,
+      "bind_duration_days": 20
+    },
+    {
+      "device_id": "dev_014",
+      "student_id": "stu_003",
+      "bind_time": "2025-08-11 21:01:43",
+      "unbind_time": "2025-09-09 21:01:43",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 29
+    },
+    {
+      "device_id": "dev_017",
+      "student_id": "stu_003",
+      "bind_time": "2025-10-06 22:25:01",
+      "unbind_time": "2025-11-01 22:25:01",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 26
+    },
+    {
+      "device_id": "dev_008",
+      "student_id": "stu_003",
+      "bind_time": "2025-09-28 18:11:15",
+      "unbind_time": null,
+      "bind_status": "bound",
+      "is_current": true,
+      "bind_duration_days": 9
+    },
+    {
+      "device_id": "dev_017",
+      "student_id": "stu_004",
+      "bind_time": "2025-08-13 05:28:35",
+      "unbind_time": "2025-09-08 05:28:35",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 26
+    },
+    {
+      "device_id": "dev_018",
+      "student_id": "stu_004",
+      "bind_time": "2025-08-09 19:01:28",
+      "unbind_time": "2025-09-07 19:01:28",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 29
+    },
+    {
+      "device_id": "dev_001",
+      "student_id": "stu_004",
+      "bind_time": "2025-10-04 19:53:49",
+      "unbind_time": null,
+      "bind_status": "bound",
+      "is_current": true,
+      "bind_duration_days": 3
+    },
+    {
+      "device_id": "dev_012",
+      "student_id": "stu_005",
+      "bind_time": "2025-08-14 11:08:55",
+      "unbind_time": null,
+      "bind_status": "bound",
+      "is_current": true,
+      "bind_duration_days": 55
+    },
+    {
+      "device_id": "dev_007",
+      "student_id": "stu_006",
+      "bind_time": "2025-10-04 08:14:10",
+      "unbind_time": "2025-10-30 08:14:10",
+      "bind_status": "unbound",
+      "is_current": false,
+      "bind_duration_days": 26
+    },
+    {
+      "device_id": "dev_016",
+      "student_id": "stu_006",
+      "bind_time": "2025-09-08 10:37:22",
+      "unbind_time": null,
+      "bind_status": "bound",
+      "is_current": true,
+      "bind_duration_days": 30
+    }
+  ],
+  "chat_records": [
+    {
+      "device_id": "dev_004",
+      "session_id": "session_8799",
+      "chat_type": "user",
+      "content": "我想学英语",
+      "created_at": "2025-09-08 04:45:25"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_5311",
+      "chat_type": "user",
+      "content": "什么是重力？",
+      "created_at": "2025-09-08 04:45:35"
+    },
+    {
+      "device_id": "dev_004",
+      "session_id": "session_8799",
+      "chat_type": "ai",
+      "content": "当然可以！请把题目告诉我，我会一步步帮您解答。",
+      "created_at": "2025-09-08 04:45:35"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_5311",
+      "chat_type": "ai",
+      "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+      "created_at": "2025-09-08 04:45:38"
+    },
+    {
+      "device_id": "dev_008",
+      "session_id": "session_5585",
+      "chat_type": "user",
+      "content": "今天的作业是什么？",
+      "created_at": "2025-09-08 05:18:32"
+    },
+    {
+      "device_id": "dev_008",
+      "session_id": "session_5585",
+      "chat_type": "ai",
+      "content": "地球的直径大约是12,742公里，是一个巨大的球体。",
+      "created_at": "2025-09-08 05:18:37"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_8321",
+      "chat_type": "user",
+      "content": "你好，今天天气怎么样？",
+      "created_at": "2025-09-08 05:23:54"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_8321",
+      "chat_type": "ai",
+      "content": "学英语是很好的想法！我们可以从基础的字母和单词开始。",
+      "created_at": "2025-09-08 05:24:02"
+    },
+    {
+      "device_id": "dev_014",
+      "session_id": "session_7875",
+      "chat_type": "user",
+      "content": "什么是重力？",
+      "created_at": "2025-09-08 09:39:09"
+    },
+    {
+      "device_id": "dev_014",
+      "session_id": "session_7875",
+      "chat_type": "ai",
+      "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+      "created_at": "2025-09-08 09:39:13"
+    },
+    {
+      "device_id": "dev_005",
+      "session_id": "session_9962",
+      "chat_type": "user",
+      "content": "你好，今天天气怎么样？",
+      "created_at": "2025-09-08 12:52:40"
+    },
+    {
+      "device_id": "dev_005",
+      "session_id": "session_9962",
+      "chat_type": "ai",
+      "content": "今天的作业包括数学练习和语文阅读，您需要我详细说明吗？",
+      "created_at": "2025-09-08 12:52:41"
+    },
+    {
+      "device_id": "dev_019",
+      "session_id": "session_5581",
+      "chat_type": "user",
+      "content": "我想学英语",
+      "created_at": "2025-09-08 14:12:21"
+    },
+    {
+      "device_id": "dev_019",
+      "session_id": "session_5581",
+      "chat_type": "ai",
+      "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+      "created_at": "2025-09-08 14:12:30"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_2264",
+      "chat_type": "user",
+      "content": "什么是重力？",
+      "created_at": "2025-09-08 14:48:21"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_2264",
+      "chat_type": "ai",
+      "content": "您好！今天天气晴朗，温度适宜，是个不错的天气呢。",
+      "created_at": "2025-09-08 14:48:28"
+    },
+    {
+      "device_id": "dev_011",
+      "session_id": "session_3261",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-08 14:54:18"
+    },
+    {
+      "device_id": "dev_011",
+      "session_id": "session_3261",
+      "chat_type": "ai",
+      "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+      "created_at": "2025-09-08 14:54:28"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_3411",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-08 15:42:51"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_3411",
+      "chat_type": "ai",
+      "content": "当然可以！请把题目告诉我，我会一步步帮您解答。",
+      "created_at": "2025-09-08 15:42:59"
+    },
+    {
+      "device_id": "dev_009",
+      "session_id": "session_3090",
+      "chat_type": "user",
+      "content": "你好，今天天气怎么样？",
+      "created_at": "2025-09-08 17:25:24"
+    },
+    {
+      "device_id": "dev_009",
+      "session_id": "session_3090",
+      "chat_type": "ai",
+      "content": "您好！今天天气晴朗，温度适宜，是个不错的天气呢。",
+      "created_at": "2025-09-08 17:25:28"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_2686",
+      "chat_type": "user",
+      "content": "地球有多大？",
+      "created_at": "2025-09-08 17:28:17"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_2686",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-08 17:28:24"
+    },
+    {
+      "device_id": "dev_007",
+      "session_id": "session_2403",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-08 18:17:55"
+    },
+    {
+      "device_id": "dev_007",
+      "session_id": "session_2403",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-08 18:18:02"
+    },
+    {
+      "device_id": "dev_008",
+      "session_id": "session_4408",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-08 19:03:01"
+    },
+    {
+      "device_id": "dev_008",
+      "session_id": "session_4408",
+      "chat_type": "ai",
+      "content": "地球的直径大约是12,742公里，是一个巨大的球体。",
+      "created_at": "2025-09-08 19:03:05"
+    },
+    {
+      "device_id": "dev_013",
+      "session_id": "session_1859",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-08 20:20:04"
+    },
+    {
+      "device_id": "dev_013",
+      "session_id": "session_1859",
+      "chat_type": "ai",
+      "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+      "created_at": "2025-09-08 20:20:10"
+    },
+    {
+      "device_id": "dev_010",
+      "session_id": "session_6692",
+      "chat_type": "user",
+      "content": "1+1等于几？",
+      "created_at": "2025-09-08 21:24:26"
+    },
+    {
+      "device_id": "dev_010",
+      "session_id": "session_6692",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-08 21:24:35"
+    },
+    {
+      "device_id": "dev_017",
+      "session_id": "session_1925",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-08 23:29:14"
+    },
+    {
+      "device_id": "dev_017",
+      "session_id": "session_1925",
+      "chat_type": "ai",
+      "content": "今天的作业包括数学练习和语文阅读，您需要我详细说明吗？",
+      "created_at": "2025-09-08 23:29:24"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_1751",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-08 23:58:04"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_1751",
+      "chat_type": "ai",
+      "content": "学英语是很好的想法！我们可以从基础的字母和单词开始。",
+      "created_at": "2025-09-08 23:58:08"
+    },
+    {
+      "device_id": "dev_005",
+      "session_id": "session_4169",
+      "chat_type": "user",
+      "content": "你好，今天天气怎么样？",
+      "created_at": "2025-09-09 00:38:31"
+    },
+    {
+      "device_id": "dev_005",
+      "session_id": "session_4169",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-09 00:38:40"
+    },
+    {
+      "device_id": "dev_009",
+      "session_id": "session_5833",
+      "chat_type": "user",
+      "content": "我想学英语",
+      "created_at": "2025-09-09 01:01:37"
+    },
+    {
+      "device_id": "dev_009",
+      "session_id": "session_5833",
+      "chat_type": "ai",
+      "content": "学英语是很好的想法！我们可以从基础的字母和单词开始。",
+      "created_at": "2025-09-09 01:01:45"
+    },
+    {
+      "device_id": "dev_014",
+      "session_id": "session_3272",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-09 07:36:24"
+    },
+    {
+      "device_id": "dev_014",
+      "session_id": "session_3272",
+      "chat_type": "ai",
+      "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+      "created_at": "2025-09-09 07:36:27"
+    },
+    {
+      "device_id": "dev_016",
+      "session_id": "session_9836",
+      "chat_type": "user",
+      "content": "什么是重力？",
+      "created_at": "2025-09-09 09:04:21"
+    },
+    {
+      "device_id": "dev_016",
+      "session_id": "session_9836",
+      "chat_type": "ai",
+      "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+      "created_at": "2025-09-09 09:04:23"
+    },
+    {
+      "device_id": "dev_008",
+      "session_id": "session_9209",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-09 09:06:20"
+    },
+    {
+      "device_id": "dev_008",
+      "session_id": "session_9209",
+      "chat_type": "ai",
+      "content": "当然可以！请把题目告诉我，我会一步步帮您解答。",
+      "created_at": "2025-09-09 09:06:22"
+    },
+    {
+      "device_id": "dev_018",
+      "session_id": "session_9594",
+      "chat_type": "user",
+      "content": "你好，今天天气怎么样？",
+      "created_at": "2025-09-09 13:16:54"
+    },
+    {
+      "device_id": "dev_018",
+      "session_id": "session_9594",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-09 13:17:03"
+    },
+    {
+      "device_id": "dev_015",
+      "session_id": "session_5749",
+      "chat_type": "user",
+      "content": "什么是光合作用？",
+      "created_at": "2025-09-09 17:27:13"
+    },
+    {
+      "device_id": "dev_015",
+      "session_id": "session_5749",
+      "chat_type": "ai",
+      "content": "今天的作业包括数学练习和语文阅读，您需要我详细说明吗？",
+      "created_at": "2025-09-09 17:27:17"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_8047",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-09 18:18:36"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_8047",
+      "chat_type": "ai",
+      "content": "您好！今天天气晴朗，温度适宜，是个不错的天气呢。",
+      "created_at": "2025-09-09 18:18:40"
+    },
+    {
+      "device_id": "dev_007",
+      "session_id": "session_2665",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-09 18:39:23"
+    },
+    {
+      "device_id": "dev_007",
+      "session_id": "session_2665",
+      "chat_type": "ai",
+      "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+      "created_at": "2025-09-09 18:39:32"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_2298",
+      "chat_type": "user",
+      "content": "请给我讲个故事",
+      "created_at": "2025-09-09 19:52:58"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_2298",
+      "chat_type": "ai",
+      "content": "地球的直径大约是12,742公里，是一个巨大的球体。",
+      "created_at": "2025-09-09 19:53:00"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_7732",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-09 20:26:44"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_7732",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-09 20:26:46"
+    },
+    {
+      "device_id": "dev_006",
+      "session_id": "session_8219",
+      "chat_type": "user",
+      "content": "1+1等于几？",
+      "created_at": "2025-09-09 22:03:19"
+    },
+    {
+      "device_id": "dev_006",
+      "session_id": "session_8219",
+      "chat_type": "ai",
+      "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+      "created_at": "2025-09-09 22:03:22"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_6281",
+      "chat_type": "user",
+      "content": "我想学英语",
+      "created_at": "2025-09-09 22:15:02"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_6281",
+      "chat_type": "ai",
+      "content": "学英语是很好的想法！我们可以从基础的字母和单词开始。",
+      "created_at": "2025-09-09 22:15:07"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_1025",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-09 22:45:55"
+    },
+    {
+      "device_id": "dev_002",
+      "session_id": "session_1025",
+      "chat_type": "ai",
+      "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+      "created_at": "2025-09-09 22:45:57"
+    },
+    {
+      "device_id": "dev_006",
+      "session_id": "session_4134",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-09 23:11:24"
+    },
+    {
+      "device_id": "dev_006",
+      "session_id": "session_4134",
+      "chat_type": "ai",
+      "content": "学英语是很好的想法！我们可以从基础的字母和单词开始。",
+      "created_at": "2025-09-09 23:11:33"
+    },
+    {
+      "device_id": "dev_014",
+      "session_id": "session_8961",
+      "chat_type": "user",
+      "content": "请给我讲个故事",
+      "created_at": "2025-09-10 02:01:24"
+    },
+    {
+      "device_id": "dev_014",
+      "session_id": "session_8961",
+      "chat_type": "ai",
+      "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+      "created_at": "2025-09-10 02:01:30"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_6942",
+      "chat_type": "user",
+      "content": "1+1等于几？",
+      "created_at": "2025-09-10 02:45:54"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_6942",
+      "chat_type": "ai",
+      "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+      "created_at": "2025-09-10 02:45:59"
+    },
+    {
+      "device_id": "dev_016",
+      "session_id": "session_9541",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-10 03:12:01"
+    },
+    {
+      "device_id": "dev_016",
+      "session_id": "session_9541",
+      "chat_type": "ai",
+      "content": "您好！今天天气晴朗，温度适宜，是个不错的天气呢。",
+      "created_at": "2025-09-10 03:12:03"
+    },
+    {
+      "device_id": "dev_004",
+      "session_id": "session_9710",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-10 04:18:00"
+    },
+    {
+      "device_id": "dev_004",
+      "session_id": "session_9710",
+      "chat_type": "ai",
+      "content": "从前有一个小兔子，它住在森林里...",
+      "created_at": "2025-09-10 04:18:07"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_3600",
+      "chat_type": "user",
+      "content": "请给我讲个故事",
+      "created_at": "2025-09-10 06:14:50"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_3600",
+      "chat_type": "ai",
+      "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+      "created_at": "2025-09-10 06:14:53"
+    },
+    {
+      "device_id": "dev_010",
+      "session_id": "session_3659",
+      "chat_type": "user",
+      "content": "1+1等于几？",
+      "created_at": "2025-09-10 06:17:59"
+    },
+    {
+      "device_id": "dev_010",
+      "session_id": "session_3659",
+      "chat_type": "ai",
+      "content": "今天的作业包括数学练习和语文阅读，您需要我详细说明吗？",
+      "created_at": "2025-09-10 06:18:00"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_8951",
+      "chat_type": "user",
+      "content": "什么是重力？",
+      "created_at": "2025-09-10 10:03:39"
+    },
+    {
+      "device_id": "dev_001",
+      "session_id": "session_8951",
+      "chat_type": "ai",
+      "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+      "created_at": "2025-09-10 10:03:49"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_4466",
+      "chat_type": "user",
+      "content": "什么是重力？",
+      "created_at": "2025-09-10 13:50:06"
+    },
+    {
+      "device_id": "dev_003",
+      "session_id": "session_4466",
+      "chat_type": "ai",
+      "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+      "created_at": "2025-09-10 13:50:15"
+    },
+    {
+      "device_id": "dev_015",
+      "session_id": "session_5516",
+      "chat_type": "user",
+      "content": "今天的作业是什么？",
+      "created_at": "2025-09-10 15:16:58"
+    },
+    {
+      "device_id": "dev_015",
+      "session_id": "session_5516",
+      "chat_type": "ai",
+      "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+      "created_at": "2025-09-10 15:17:08"
+    },
+    {
+      "device_id": "dev_013",
+      "session_id": "session_6491",
+      "chat_type": "user",
+      "content": "我想学英语",
+      "created_at": "2025-09-10 16:31:45"
+    },
+    {
+      "device_id": "dev_013",
+      "session_id": "session_6491",
+      "chat_type": "ai",
+      "content": "从前有一个小兔子，它住在森林里...",
+      "created_at": "2025-09-10 16:31:46"
+    },
+    {
+      "device_id": "dev_011",
+      "session_id": "session_2541",
+      "chat_type": "user",
+      "content": "地球有多大？",
+      "created_at": "2025-09-10 18:24:05"
+    },
+    {
+      "device_id": "dev_011",
+      "session_id": "session_2541",
+      "chat_type": "ai",
+      "content": "学英语是很好的想法！我们可以从基础的字母和单词开始。",
+      "created_at": "2025-09-10 18:24:15"
+    },
+    {
+      "device_id": "dev_007",
+      "session_id": "session_8105",
+      "chat_type": "user",
+      "content": "请给我讲个故事",
+      "created_at": "2025-09-10 20:25:08"
+    },
+    {
+      "device_id": "dev_007",
+      "session_id": "session_8105",
+      "chat_type": "ai",
+      "content": "地球的直径大约是12,742公里，是一个巨大的球体。",
+      "created_at": "2025-09-10 20:25:17"
+    },
+    {
+      "device_id": "dev_020",
+      "session_id": "session_1923",
+      "chat_type": "user",
+      "content": "今天的作业是什么？",
+      "created_at": "2025-09-10 23:02:12"
+    },
+    {
+      "device_id": "dev_020",
+      "session_id": "session_1923",
+      "chat_type": "ai",
+      "content": "今天的作业包括数学练习和语文阅读，您需要我详细说明吗？",
+      "created_at": "2025-09-10 23:02:17"
+    },
+    {
+      "device_id": "dev_017",
+      "session_id": "session_6437",
+      "chat_type": "user",
+      "content": "你能帮我解决这道数学题吗？",
+      "created_at": "2025-09-11 01:35:46"
+    },
+    {
+      "device_id": "dev_017",
+      "session_id": "session_6437",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-11 01:35:48"
+    },
+    {
+      "device_id": "dev_017",
+      "session_id": "session_7408",
+      "chat_type": "user",
+      "content": "帮我制定一个学习计划",
+      "created_at": "2025-09-11 01:45:04"
+    },
+    {
+      "device_id": "dev_017",
+      "session_id": "session_7408",
+      "chat_type": "ai",
+      "content": "今天的作业包括数学练习和语文阅读，您需要我详细说明吗？",
+      "created_at": "2025-09-11 01:45:07"
+    },
+    {
+      "device_id": "dev_015",
+      "session_id": "session_5698",
+      "chat_type": "user",
+      "content": "1+1等于几？",
+      "created_at": "2025-09-11 03:32:17"
+    },
+    {
+      "device_id": "dev_015",
+      "session_id": "session_5698",
+      "chat_type": "ai",
+      "content": "1+1等于2，这是最基础的数学运算。",
+      "created_at": "2025-09-11 03:32:19"
+    },
+    {
+      "device_id": "dev_004",
+      "session_id": "session_6230",
+      "chat_type": "user",
+      "content": "我想学英语",
+      "created_at": "2025-09-11 06:05:48"
+    },
+    {
+      "device_id": "dev_004",
+      "session_id": "session_6230",
+      "chat_type": "ai",
+      "content": "从前有一个小兔子，它住在森林里...",
+      "created_at": "2025-09-11 06:05:52"
+    }
+  ],
+  "sample_statistics": {
+    "device_chat_stats": {
+      "device_id": "dev_001",
+      "mac_address": "AA:BB:CC:DD:EE:01",
+      "device_alias": "智能设备01",
+      "agent_id": "agent_004",
+      "agent_name": "科学探索",
+      "student_id": "stu_004",
+      "student_name": "刘小强",
+      "total_chat_count": 60,
+      "user_message_count": 30,
+      "ai_message_count": 30,
+      "today_chat_count": 4,
+      "week_chat_count": 8,
+      "month_chat_count": 14,
+      "last_chat_time": "2025-10-08 21:03:22",
+      "first_chat_time": "2025-09-08 23:58:04",
+      "recent_chat_records": [
+        {
+          "session_id": "session_6370",
+          "chat_type": "ai",
+          "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+          "created_at": "2025-10-08 21:03:22"
+        },
+        {
+          "session_id": "session_6370",
+          "chat_type": "user",
+          "content": "什么是光合作用？",
+          "created_at": "2025-10-08 21:03:18"
+        },
+        {
+          "session_id": "session_3485",
+          "chat_type": "ai",
+          "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+          "created_at": "2025-10-08 03:51:01"
+        },
+        {
+          "session_id": "session_3485",
+          "chat_type": "user",
+          "content": "什么是重力？",
+          "created_at": "2025-10-08 03:50:55"
+        },
+        {
+          "session_id": "session_2436",
+          "chat_type": "ai",
+          "content": "好的，我来帮您制定一个学习计划。首先，请告诉我您想要学习什么内容。",
+          "created_at": "2025-10-07 17:42:33"
+        },
+        {
+          "session_id": "session_2436",
+          "chat_type": "user",
+          "content": "地球有多大？",
+          "created_at": "2025-10-07 17:42:28"
+        },
+        {
+          "session_id": "session_3757",
+          "chat_type": "ai",
+          "content": "光合作用是植物利用阳光、水和二氧化碳制造食物的过程。",
+          "created_at": "2025-10-07 17:19:13"
+        },
+        {
+          "session_id": "session_3757",
+          "chat_type": "user",
+          "content": "帮我制定一个学习计划",
+          "created_at": "2025-10-07 17:19:03"
+        },
+        {
+          "session_id": "session_8894",
+          "chat_type": "ai",
+          "content": "重力是地球对物体的吸引力，让物体向地面下落。",
+          "created_at": "2025-10-04 08:52:01"
+        },
+        {
+          "session_id": "session_8894",
+          "chat_type": "user",
+          "content": "地球有多大？",
+          "created_at": "2025-10-04 08:51:59"
+        }
+      ]
+    },
+    "agent_device_management": {
+      "agent_id": "agent_001",
+      "agent_name": "小智助手",
+      "agent_description": "智能学习助手",
+      "total_device_count": 7,
+      "online_device_count": 6,
+      "bound_device_count": 1,
+      "unbound_device_count": 6,
+      "total_chat_count": 234,
+      "today_chat_count": 10,
+      "last_active_time": "2025-10-08 16:37:21",
+      "devices": [
+        {
+          "device_id": "dev_004",
+          "mac_address": "AA:BB:CC:DD:EE:04",
+          "device_alias": "智能设备04",
+          "student_id": null,
+          "student_name": "未绑定",
+          "bind_status": "unbound",
+          "is_online": true,
+          "chat_count": 48,
+          "today_chat_count": 0,
+          "last_connected_at": "2025-10-02 06:57:20",
+          "bind_time": null,
+          "last_chat_time": "2025-10-06 22:21:14"
+        },
+        {
+          "device_id": "dev_006",
+          "mac_address": "AA:BB:CC:DD:EE:06",
+          "device_alias": "智能设备06",
+          "student_id": null,
+          "student_name": "未绑定",
+          "bind_status": "unbound",
+          "is_online": true,
+          "chat_count": 24,
+          "today_chat_count": 4,
+          "last_connected_at": "2025-10-08 16:37:21",
+          "bind_time": null,
+          "last_chat_time": "2025-10-08 20:48:04"
+        },
+        {
+          "device_id": "dev_009",
+          "mac_address": "AA:BB:CC:DD:EE:09",
+          "device_alias": "智能设备09",
+          "student_id": null,
+          "student_name": "未绑定",
+          "bind_status": "unbound",
+          "is_online": true,
+          "chat_count": 42,
+          "today_chat_count": 2,
+          "last_connected_at": "2025-10-02 04:31:51",
+          "bind_time": null,
+          "last_chat_time": "2025-10-08 21:59:48"
+        },
+        {
+          "device_id": "dev_011",
+          "mac_address": "AA:BB:CC:DD:EE:0B",
+          "device_alias": "智能设备11",
+          "student_id": null,
+          "student_name": "未绑定",
+          "bind_status": "unbound",
+          "is_online": true,
+          "chat_count": 24,
+          "today_chat_count": 2,
+          "last_connected_at": "2025-10-07 16:38:36",
+          "bind_time": null,
+          "last_chat_time": "2025-10-08 01:22:30"
+        },
+        {
+          "device_id": "dev_013",
+          "mac_address": "AA:BB:CC:DD:EE:0D",
+          "device_alias": "智能设备13",
+          "student_id": null,
+          "student_name": "未绑定",
+          "bind_status": "unbound",
+          "is_online": true,
+          "chat_count": 44,
+          "today_chat_count": 2,
+          "last_connected_at": "2025-10-05 07:15:39",
+          "bind_time": null,
+          "last_chat_time": "2025-10-08 08:13:21"
+        },
+        {
+          "device_id": "dev_014",
+          "mac_address": "AA:BB:CC:DD:EE:0E",
+          "device_alias": "智能设备14",
+          "student_id": null,
+          "student_name": "未绑定",
+          "bind_status": "unbound",
+          "is_online": false,
+          "chat_count": 20,
+          "today_chat_count": 0,
+          "last_connected_at": "2025-10-05 10:43:56",
+          "bind_time": null,
+          "last_chat_time": "2025-10-07 06:34:34"
+        },
+        {
+          "device_id": "dev_016",
+          "mac_address": "AA:BB:CC:DD:EE:10",
+          "device_alias": "智能设备16",
+          "student_id": "stu_006",
+          "student_name": "赵小亮",
+          "bind_status": "bound",
+          "is_online": true,
+          "chat_count": 32,
+          "today_chat_count": 0,
+          "last_connected_at": "2025-10-02 09:23:37",
+          "bind_time": "2025-09-08 10:37:22",
+          "last_chat_time": "2025-10-07 23:41:29"
+        }
+      ]
+    },
+    "student_device_history": {
+      "student_id": "stu_001",
+      "student_name": "张小明",
+      "student_class": "三年级1班",
+      "student_grade": "三年级",
+      "total_bind_device_count": 3,
+      "current_bind_device_count": 1,
+      "history_bind_device_count": 2,
+      "total_chat_count": 142,
+      "first_bind_time": "2025-08-18 06:01:13",
+      "last_bind_time": "2025-10-01 19:05:33",
+      "last_active_time": "2025-10-01 19:05:33",
+      "device_bind_history": [
+        {
+          "device_id": "dev_007",
+          "mac_address": "AA:BB:CC:DD:EE:07",
+          "device_alias": "智能设备07",
+          "agent_id": "agent_002",
+          "agent_name": "英语老师",
+          "bind_status": "bound",
+          "is_current": true,
+          "bind_time": "2025-10-01 19:05:33",
+          "unbind_time": null,
+          "bind_duration_days": 6,
+          "chat_count": 58,
+          "last_chat_time": "2025-10-08 05:43:05",
+          "first_chat_time": "2025-09-08 18:17:55"
+        },
+        {
+          "device_id": "dev_016",
+          "mac_address": "AA:BB:CC:DD:EE:10",
+          "device_alias": "智能设备16",
+          "agent_id": "agent_001",
+          "agent_name": "小智助手",
+          "bind_status": "unbound",
+          "is_current": false,
+          "bind_time": "2025-08-28 20:53:47",
+          "unbind_time": "2025-09-06 20:53:47",
+          "bind_duration_days": 9,
+          "chat_count": 32,
+          "last_chat_time": "2025-10-07 23:41:29",
+          "first_chat_time": "2025-09-09 09:04:21"
+        },
+        {
+          "device_id": "dev_002",
+          "mac_address": "AA:BB:CC:DD:EE:02",
+          "device_alias": "智能设备02",
+          "agent_id": "agent_003",
+          "agent_name": "数学导师",
+          "bind_status": "unbound",
+          "is_current": false,
+          "bind_time": "2025-08-18 06:01:13",
+          "unbind_time": "2025-09-14 06:01:13",
+          "bind_duration_days": 27,
+          "chat_count": 52,
+          "last_chat_time": "2025-10-07 23:54:56",
+          "first_chat_time": "2025-09-08 14:48:21"
+        }
+      ]
+    }
+  }
+}

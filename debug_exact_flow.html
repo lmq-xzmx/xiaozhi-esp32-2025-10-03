@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精确流程调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .device-item { padding: 10px; margin: 5px 0; background: #f5f5f5; cursor: pointer; border: 1px solid #ccc; }
+        .device-item:hover { background: #e0e0e0; }
+        .device-item.active { background: #007bff; color: white; }
+        .session-item { padding: 8px; margin: 3px 0; background: #fff; border: 1px solid #ccc; cursor: pointer; }
+        .session-item:hover { background: #f0f0f0; }
+        .loading-state { text-align: center; padding: 20px; color: #666; }
+        .error-state { text-align: center; padding: 20px; color: red; }
+        .empty-state { text-align: center; padding: 20px; color: #999; }
+        #sessions-list { min-height: 150px; border: 2px solid #007bff; padding: 10px; }
+        .debug-log { background: #f8f9fa; padding: 10px; margin: 5px 0; font-family: monospace; font-size: 12px; border-left: 3px solid #007bff; }
+        .error-log { border-left-color: red; }
+        .success-log { border-left-color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhanced Chat Records 精确流程调试</h1>
+        
+        <div class="section">
+            <h2>1. 设备列表</h2>
+            <div id="devices-list">加载中...</div>
+        </div>
+
+        <div class="section">
+            <h2>2. Sessions List (精确模拟)</h2>
+            <p>当前设备: <span id="current-device-info">无</span></p>
+            <div id="sessions-list">
+                <div class="loading-state">请先选择一个设备</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>3. 调试日志</h2>
+            <button onclick="clearLogs()">清空日志</button>
+            <div id="debug-logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const PYTHON_API_BASE = 'http://localhost:8091/api';
+        
+        // 模拟enhanced-chat-records.html的全局变量
+        const currentData = {
+            currentDevice: null,
+            currentSession: null,
+            sessions: []
+        };
+        
+        const pagination = {
+            currentPage: 1,
+            totalPages: 1,
+            pageSize: 20
+        };
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('debug-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logClass = type === 'error' ? 'error-log' : type === 'success' ? 'success-log' : '';
+            logsDiv.innerHTML += `<div class="debug-log ${logClass}">[${timestamp}] ${message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('debug-logs').innerHTML = '';
+        }
+
+        // 精确模拟enhanced-chat-records.html的loadDevices函数
+        async function loadDevices() {
+            const devicesDiv = document.getElementById('devices-list');
+            devicesDiv.innerHTML = '<div class="loading-state">加载设备中...</div>';
+            
+            try {
+                log('开始加载设备列表');
+                const response = await fetch(`${PYTHON_API_BASE}/devices`);
+                log(`设备API响应状态: ${response.status}`);
+                
+                const devices = await response.json();
+                log(`设备API返回数据: ${JSON.stringify(devices)}`);
+                
+                devicesDiv.innerHTML = '';
+                devices.forEach(device => {
+                    const deviceDiv = document.createElement('div');
+                    deviceDiv.className = 'device-item';
+                    deviceDiv.innerHTML = `
+                        <div><strong>${device.device_id}</strong></div>
+                        <div>${device.device_name || '未命名设备'}</div>
+                    `;
+                    deviceDiv.onclick = (event) => selectDevice(device.device_id, device.device_name || '未命名设备', event);
+                    devicesDiv.appendChild(deviceDiv);
+                });
+                
+                log(`成功加载 ${devices.length} 个设备`, 'success');
+            } catch (error) {
+                devicesDiv.innerHTML = `<div class="error-state">加载设备失败: ${error.message}</div>`;
+                log(`加载设备失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 精确模拟enhanced-chat-records.html的selectDevice函数
+        async function selectDevice(deviceId, deviceName, event) {
+            log(`selectDevice被调用: deviceId=${deviceId}, deviceName=${deviceName}`);
+            
+            // 更新UI状态
+            document.querySelectorAll('.device-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.device-item').classList.add('active');
+
+            currentData.currentDevice = { id: deviceId, name: deviceName };
+            log(`currentData.currentDevice设置为: ${JSON.stringify(currentData.currentDevice)}`);
+            
+            // 更新头部信息
+            document.getElementById('current-device-info').textContent = `${deviceId} (${deviceName})`;
+            
+            // 重置会话和消息
+            currentData.currentSession = null;
+            log('重置currentSession为null');
+            
+            // 加载会话列表
+            log(`准备调用loadSessions(${deviceId})`);
+            await loadSessions(deviceId);
+        }
+
+        // 精确模拟enhanced-chat-records.html的loadSessions函数
+        async function loadSessions(deviceId, page = 1) {
+            log(`loadSessions被调用: deviceId=${deviceId}, page=${page}`);
+            
+            const container = document.getElementById('sessions-list');
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div>🔄</div>
+                    <div>加载会话列表...</div>
+                </div>
+            `;
+            log('sessions-list设置为加载状态');
+
+            try {
+                const url = `${PYTHON_API_BASE}/device/${deviceId}/sessions?page=${page}&per_page=${pagination.pageSize}`;
+                log(`准备请求URL: ${url}`);
+                
+                const response = await fetch(url);
+                log(`会话API响应状态: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`会话API返回原始数据: ${JSON.stringify(result)}`);
+                
+                if (result.success) {
+                    log('API返回success=true');
+                    currentData.sessions = result.data.list || [];
+                    log(`设置currentData.sessions: ${JSON.stringify(currentData.sessions)}`);
+                    
+                    pagination.currentPage = page;
+                    pagination.totalPages = result.data.pagination?.pages || 1;
+                    log(`更新分页信息: currentPage=${pagination.currentPage}, totalPages=${pagination.totalPages}`);
+                    
+                    log('准备调用renderSessions()');
+                    renderSessions();
+                    
+                    // 更新会话数量显示
+                    const totalCount = result.data.pagination?.total || 0;
+                    log(`会话总数: ${totalCount}`);
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                log(`loadSessions出错: ${error.message}`, 'error');
+                console.error('加载会话失败:', error);
+                container.innerHTML = `
+                    <div class="error-state">
+                        <div>❌</div>
+                        <p>加载会话失败: ${error.message}</p>
+                        <button onclick="loadSessions('${deviceId}', ${page})">重试</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 精确模拟enhanced-chat-records.html的renderSessions函数
+        function renderSessions() {
+            log(`renderSessions被调用，当前sessions数量: ${currentData.sessions ? currentData.sessions.length : 0}`);
+            
+            const container = document.getElementById('sessions-list');
+            
+            if (!currentData.sessions || currentData.sessions.length === 0) {
+                log('sessions为空，显示空状态');
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div>💬</div>
+                        <p>暂无会话记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            log('开始渲染sessions');
+            const html = currentData.sessions.map((session, index) => {
+                log(`渲染session ${index}: ${JSON.stringify(session)}`);
+                return `
+                    <div class="session-item" onclick="selectSession('${session.session_id}')">
+                        <div><strong>会话ID:</strong> ${session.session_id}</div>
+                        <div><strong>创建时间:</strong> ${session.created_at || '未知'}</div>
+                        <div><strong>最后消息:</strong> ${session.last_message_at || '未知'}</div>
+                        <div><strong>消息数量:</strong> ${session.chat_count || 0}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+            log(`成功渲染 ${currentData.sessions.length} 个会话`, 'success');
+        }
+
+        function selectSession(sessionId) {
+            log(`选择会话: ${sessionId}`);
+            currentData.currentSession = sessionId;
+        }
+
+        // 页面加载完成后自动加载设备
+        document.addEventListener('DOMContentLoaded', function() {
+            log('页面加载完成，开始初始化');
+            loadDevices();
+        });
+    </script>
+</body>
+</html>

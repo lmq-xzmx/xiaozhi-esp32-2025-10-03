@@ -1,0 +1,192 @@
+{
+  "data": {
+    "chat_records": [
+      {
+        "agent_id": "agent_001",
+        "chat_type": 2,
+        "content": "\u00e4\u00bb\u0160\u00e5\u00a4\u00a9\u00e5\u00a4\u00a9\u00e6\u00b0\u201d\u00e6\u2122\u00b4\u00e6\u0153\u2014\u00ef\u00bc\u0152\u00e6\u00b8\u00a9\u00e5\u00ba\u00a6\u00e9\u20ac\u201a\u00e5\u00ae\u0153\u00ef\u00bc\u0152\u00e6\u02dc\u00af\u00e4\u00b8\u00aa\u00e5\u2021\u00ba\u00e9\u2014\u00a8\u00e7\u0161\u201e\u00e5\u00a5\u00bd\u00e6\u2014\u00a5\u00e5\u00ad\u0090\u00e3\u20ac\u201a",
+        "created_at": "2025-10-10 07:35:41",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2035,
+        "student_id": 1001,
+        "updated_at": "2025-10-10 07:35:41"
+      },
+      {
+        "agent_id": "agent_001",
+        "chat_type": 1,
+        "content": "\u00e4\u00bd\u00a0\u00e5\u00a5\u00bd\u00ef\u00bc\u0152\u00e6\u02c6\u2018\u00e6\u0192\u00b3\u00e4\u00ba\u2020\u00e8\u00a7\u00a3\u00e4\u00b8\u20ac\u00e4\u00b8\u2039\u00e4\u00bb\u0160\u00e5\u00a4\u00a9\u00e7\u0161\u201e\u00e5\u00a4\u00a9\u00e6\u00b0\u201d\u00e6\u0192\u2026\u00e5\u2020\u00b5",
+        "created_at": "2025-10-10 07:35:41",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2034,
+        "student_id": 1001,
+        "updated_at": "2025-10-10 07:35:41"
+      },
+      {
+        "agent_id": "agent_demo",
+        "chat_type": 2,
+        "content": "\u00e8\u00af\u00b7\u00e4\u00bb\u2039\u00e7\u00bb\u008d\u00e4\u00b8\u20ac\u00e4\u00b8\u2039\u00e4\u00ba\u00ba\u00e5\u00b7\u00a5\u00e6\u2122\u00ba\u00e8\u0192\u00bd\u00e7\u0161\u201e\u00e5\u008f\u2018\u00e5\u00b1\u2022\u00e5\u017d\u2020\u00e5\u008f\u00b2",
+        "created_at": "2025-10-10 07:39:59",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2044,
+        "student_id": 1001,
+        "updated_at": "2025-10-10 07:39:59"
+      },
+      {
+        "agent_id": "agent_demo",
+        "chat_type": 1,
+        "content": "\u00e4\u00ba\u00ba\u00e5\u00b7\u00a5\u00e6\u2122\u00ba\u00e8\u0192\u00bd\u00e7\u0161\u201e\u00e5\u008f\u2018\u00e5\u00b1\u2022\u00e5\u008f\u00af\u00e4\u00bb\u00a5\u00e8\u00bf\u00bd\u00e6\u00ba\u00af\u00e5\u02c6\u00b020\u00e4\u00b8\u2013\u00e7\u00ba\u00aa50\u00e5\u00b9\u00b4\u00e4\u00bb\u00a3\u00e3\u20ac\u201a1950\u00e5\u00b9\u00b4\u00ef\u00bc\u0152\u00e8\u2030\u00be\u00e4\u00bc\u00a6\u00c2\u00b7\u00e5\u203a\u00be\u00e7\u0081\u00b5\u00e6\u008f\u0090\u00e5\u2021\u00ba\u00e4\u00ba\u2020\u00e8\u2018\u2014\u00e5\u0090\u008d\u00e7\u0161\u201e\u00e5\u203a\u00be\u00e7\u0081\u00b5\u00e6\u00b5\u2039\u00e8\u00af\u2022\u00e3\u20ac\u201a1956\u00e5\u00b9\u00b4\u00ef\u00bc\u0152\u00e8\u00be\u00be\u00e7\u2030\u00b9\u00e8\u0152\u2026\u00e6\u2013\u00af\u00e4\u00bc\u0161\u00e8\u00ae\u00ae\u00e6\u00a0\u2021\u00e5\u00bf\u2014\u00e7\u009d\u20ac\u00e4\u00ba\u00ba\u00e5\u00b7\u00a5\u00e6\u2122\u00ba\u00e8\u0192\u00bd\u00e5\u00ad\u00a6\u00e7\u00a7\u2018\u00e7\u0161\u201e\u00e6\u00ad\u00a3\u00e5\u00bc\u008f\u00e8\u00af\u017e\u00e7\u201d\u0178\u00e3\u20ac\u201a\u00e7\u00bb\u008f\u00e8\u00bf\u2021\u00e5\u2021\u00a0\u00e5\u008d\u0081\u00e5\u00b9\u00b4\u00e7\u0161\u201e\u00e5\u008f\u2018\u00e5\u00b1\u2022\u00ef\u00bc\u0152AI\u00e7\u00bb\u008f\u00e5\u017d\u2020\u00e4\u00ba\u2020\u00e5\u00a4\u0161\u00e6\u00ac\u00a1\u00e8\u00b5\u00b7\u00e4\u00bc\u008f\u00ef\u00bc\u0152\u00e5\u00a6\u201a\u00e4\u00bb\u0160\u00e5\u0153\u00a8\u00e6\u00b7\u00b1\u00e5\u00ba\u00a6\u00e5\u00ad\u00a6\u00e4\u00b9\u00a0\u00e5\u2019\u0152\u00e5\u00a4\u00a7\u00e6\u00a8\u00a1\u00e5\u017e\u2039\u00e7\u0161\u201e\u00e6\u017d\u00a8\u00e5\u0160\u00a8\u00e4\u00b8\u2039\u00e8\u00bf\u017d\u00e6\u009d\u00a5\u00e4\u00ba\u2020\u00e6\u2013\u00b0\u00e7\u0161\u201e\u00e9\u00bb\u201e\u00e9\u2021\u2018\u00e6\u2014\u00b6\u00e4\u00bb\u00a3\u00e3\u20ac\u201a",
+        "created_at": "2025-10-10 07:40:00",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2045,
+        "student_id": 1001,
+        "updated_at": "2025-10-10 07:40:00"
+      },
+      {
+        "agent_id": "agent001",
+        "chat_type": 1,
+        "content": "\u6d4b\u8bd5\u804a\u5929\u5185\u5bb9",
+        "created_at": "2025-10-11 12:59:32",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2359,
+        "student_id": 1001,
+        "updated_at": "2025-10-11 12:59:32"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 2,
+        "content": "\u660e\u5929\u9884\u8ba1\u4f1a\u6709\u5c0f\u96e8\uff0c\u5efa\u8bae\u60a8\u51fa\u95e8\u65f6\u643a\u5e26\u96e8\u5177\u3002\u6e29\u5ea6\u4f1a\u6bd4\u4eca\u5929\u7a0d\u4f4e\u4e00\u4e9b\u3002",
+        "created_at": "2025-10-11 15:52:49",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2364,
+        "student_id": null,
+        "updated_at": "2025-10-11 15:52:49"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 2,
+        "content": "\u5f53\u7136\u53ef\u4ee5\uff01\u6839\u636e\u60a8\u7684\u9700\u6c42\uff0c\u6211\u63a8\u8350\u4ee5\u4e0b\u5b66\u4e60\u8d44\u6599\uff1a1. \u5728\u7ebf\u8bfe\u7a0b\u5e73\u53f0 2. \u4e13\u4e1a\u4e66\u7c4d 3. \u5b9e\u8df5\u9879\u76ee\u3002\u60a8\u5e0c\u671b\u4e86\u89e3\u54ea\u4e2a\u65b9\u9762\u7684\u8be6\u7ec6\u4fe1\u606f\uff1f",
+        "created_at": "2025-10-11 15:52:49",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2366,
+        "student_id": null,
+        "updated_at": "2025-10-11 15:52:49"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 1,
+        "content": "\u80fd\u5e2e\u6211\u63a8\u8350\u4e00\u4e9b\u5b66\u4e60\u8d44\u6599\u5417\uff1f",
+        "created_at": "2025-10-11 15:52:49",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2365,
+        "student_id": null,
+        "updated_at": "2025-10-11 15:52:49"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 1,
+        "content": "\u8c22\u8c22\u4f60\u7684\u5efa\u8bae\uff0c\u90a3\u660e\u5929\u5462\uff1f",
+        "created_at": "2025-10-11 15:52:49",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2363,
+        "student_id": null,
+        "updated_at": "2025-10-11 15:52:49"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 2,
+        "content": "\u60a8\u597d\uff01\u4eca\u5929\u5929\u6c14\u6674\u6717\uff0c\u6e29\u5ea6\u9002\u5b9c\uff0c\u662f\u4e2a\u4e0d\u9519\u7684\u5929\u6c14\u3002\u5efa\u8bae\u60a8\u5916\u51fa\u65f6\u6ce8\u610f\u9632\u6652\u3002",
+        "created_at": "2025-10-11 15:52:49",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2362,
+        "student_id": null,
+        "updated_at": "2025-10-11 15:52:49"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 1,
+        "content": "\u4f60\u597d\uff0c\u6211\u60f3\u4e86\u89e3\u4e00\u4e0b\u4eca\u5929\u7684\u5929\u6c14\u60c5\u51b5\u3002",
+        "created_at": "2025-10-11 15:52:49",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2361,
+        "student_id": null,
+        "updated_at": "2025-10-11 15:52:49"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 1,
+        "content": "\u4f60\u597d\uff0c\u6211\u60f3\u4e86\u89e3\u4e00\u4e0b\u4eca\u5929\u7684\u5929\u6c14\u60c5\u51b5\u3002",
+        "created_at": "2025-10-11 16:07:53",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2367,
+        "student_id": null,
+        "updated_at": "2025-10-11 16:07:53"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 2,
+        "content": "\u60a8\u597d\uff01\u4eca\u5929\u5929\u6c14\u6674\u6717\uff0c\u6e29\u5ea6\u9002\u5b9c\uff0c\u662f\u4e2a\u4e0d\u9519\u7684\u5929\u6c14\u3002\u5efa\u8bae\u60a8\u5916\u51fa\u65f6\u6ce8\u610f\u9632\u6652\u3002",
+        "created_at": "2025-10-11 16:07:53",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2368,
+        "student_id": null,
+        "updated_at": "2025-10-11 16:07:53"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 1,
+        "content": "\u8c22\u8c22\u4f60\u7684\u5efa\u8bae\uff0c\u90a3\u660e\u5929\u5462\uff1f",
+        "created_at": "2025-10-11 16:07:53",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2369,
+        "student_id": null,
+        "updated_at": "2025-10-11 16:07:53"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 2,
+        "content": "\u660e\u5929\u9884\u8ba1\u4f1a\u6709\u5c0f\u96e8\uff0c\u5efa\u8bae\u60a8\u51fa\u95e8\u65f6\u643a\u5e26\u96e8\u5177\u3002\u6e29\u5ea6\u4f1a\u6bd4\u4eca\u5929\u7a0d\u4f4e\u4e00\u4e9b\u3002",
+        "created_at": "2025-10-11 16:07:53",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2370,
+        "student_id": null,
+        "updated_at": "2025-10-11 16:07:53"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 1,
+        "content": "\u80fd\u5e2e\u6211\u63a8\u8350\u4e00\u4e9b\u5b66\u4e60\u8d44\u6599\u5417\uff1f",
+        "created_at": "2025-10-11 16:07:53",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2371,
+        "student_id": null,
+        "updated_at": "2025-10-11 16:07:53"
+      },
+      {
+        "agent_id": null,
+        "chat_type": 2,
+        "content": "\u5f53\u7136\u53ef\u4ee5\uff01\u6839\u636e\u60a8\u7684\u9700\u6c42\uff0c\u6211\u63a8\u8350\u4ee5\u4e0b\u5b66\u4e60\u8d44\u6599\uff1a1. \u5728\u7ebf\u8bfe\u7a0b\u5e73\u53f0 2. \u4e13\u4e1a\u4e66\u7c4d 3. \u5b9e\u8df5\u9879\u76ee\u3002\u60a8\u5e0c\u671b\u4e86\u89e3\u54ea\u4e2a\u65b9\u9762\u7684\u8be6\u7ec6\u4fe1\u606f\uff1f",
+        "created_at": "2025-10-11 16:07:53",
+        "device_id": "58:8c:81:65:4c:8c",
+        "id": 2372,
+        "student_id": null,
+        "updated_at": "2025-10-11 16:07:53"
+      }
+    ],
+    "device_info": {
+      "agent_id": "d1100bdbcfba4a6e80deb5a439992d36",
+      "agent_name": "\u9648\u6893\u68cb\u7684\u5c0fU",
+      "alias": null,
+      "bind_status": 0,
+      "bind_time": null,
+      "id": "58:8c:81:65:4c:8c",
+      "last_connected_at": "2025-10-09 17:05:45",
+      "mac_address": "58:8c:81:65:4c:8c",
+      "student_id": null,
+      "student_name": null,
+      "student_username": null
+    },
+    "export_time": "2025-10-11 16:15:42",
+    "total_records": 17
+  },
+  "success": true
+}

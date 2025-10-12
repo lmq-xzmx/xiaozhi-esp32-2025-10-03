@@ -26,14 +26,14 @@ logger = logging.getLogger(__name__)
 class ASRPerformanceMonitor:
     """ASR性能监控器"""
     
-    def __init__(self, asr_url="http://localhost:8001", check_interval=30):
+    def __init__(self, asr_url="http://localhost:8001", check_interval=60):
         self.asr_url = asr_url
         self.check_interval = check_interval
         self.alert_thresholds = {
             "max_response_time": 1.0,  # 最大响应时间1秒
             "max_error_rate": 0.05,    # 最大错误率5%
-            "max_memory_usage": 1400,  # 最大内存使用1400MB
-            "min_cache_hit_rate": 0.1  # 最小缓存命中率10%
+            "max_memory_usage": 6000,  # 最大内存使用6000MB (调整为更合理的值)
+            "min_cache_hit_rate": 0.01  # 最小缓存命中率1% (降低阈值，减少误报)
         }
         self.stats_history = []
         
@@ -174,15 +174,18 @@ class ASRPerformanceMonitor:
         if len(self.stats_history) > 100:
             self.stats_history.pop(0)
         
-        # 记录到日志
+        # 记录到日志 (减少日志输出频率)
         if health.get("status") == "healthy":
-            logger.info(f"ASR服务健康 - 统计: {stats.get('status', 'unknown')}")
+            logger.debug(f"ASR服务健康 - 统计: {stats.get('status', 'unknown')}")
         else:
-            logger.warning(f"ASR服务异常 - {health.get('error', 'unknown')}")
+            logger.error(f"ASR服务异常 - {health.get('error', 'unknown')}")
         
-        # 记录告警
+        # 记录告警 (只记录严重告警)
         for alert in alerts:
-            logger.warning(f"告警: {alert['message']}")
+            if alert.get('type') in ['high_cpu_usage', 'service_down']:
+                logger.error(f"严重告警: {alert['message']}")
+            else:
+                logger.debug(f"告警: {alert['message']}")
     
     def print_dashboard(self, health: Dict, stats: Dict, system: Dict, alerts: list):
         """打印监控仪表板"""

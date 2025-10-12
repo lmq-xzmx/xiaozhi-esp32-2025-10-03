@@ -1,0 +1,37 @@
+asr_service:
+  device: cuda:0
+  max_retries: 1
+  model_path: /models/asr/streaming
+  provider: funasr
+  timeout: 3.0
+audio_processing:
+  bit_depth: 16
+  channels: 1
+  enable_vad: true
+  format: wav
+  sample_rate: 16000
+  vad_model: silero
+latency_optimization:
+  inference_settings:
+    batch_size: 1
+    enable_fp16: true
+    enable_int8: false
+    max_concurrent: 200
+    worker_threads: 16
+  model_settings:
+    chunk_size: 160
+    model_type: streaming
+    overlap_size: 80
+    silence_timeout: 0.5
+    vad_threshold: 0.3
+  preprocessing:
+    fast_resampling: true
+    minimal_padding: true
+    skip_normalization: true
+    zero_copy: true
+performance_settings:
+  connection_pool_size: 50
+  io_threads: 8
+  max_concurrent_requests: 200
+  request_queue_size: 500
+  worker_threads: 16

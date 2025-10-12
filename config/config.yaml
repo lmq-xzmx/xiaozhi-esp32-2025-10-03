@@ -1,0 +1,24 @@
+manager-api:
+  url: "http://localhost:8091"
+  secret: "xiaozhi_secret_key_2024"
+  timeout: 30
+  max_retries: 6
+  retry_delay: 10
+
+database:
+  host: "172.20.0.5"  # 使用容器IP地址
+  port: 3306
+  user: "root"
+  password: "123456"
+  database: "xiaozhi_esp32_server"
+  charset: "utf8mb4"
+  container_name: "xiaozhi-esp32-server-db"
+  # 连接池配置
+  pool_size: 5
+  connect_timeout: 30
+  read_timeout: 30
+
+server:
+  host: "0.0.0.0"
+  port: 8091
+  debug: true

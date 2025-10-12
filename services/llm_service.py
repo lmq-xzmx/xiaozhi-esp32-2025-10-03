@@ -58,7 +58,7 @@ class LLMRequest(BaseModel):
     model: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
-    stream: bool = False
+    stream: bool = True  # 默认启用流式
     priority: int = 2  # 1=高优先级, 2=中优先级, 3=低优先级
     cache_enabled: bool = True
     timeout: Optional[float] = None
@@ -332,8 +332,7 @@ class LLMService:
             use_dns_cache=True,
             keepalive_timeout=60,  # 增加keepalive超时
             enable_cleanup_closed=True,  # 启用清理关闭的连接
-            force_close=False,  # 不强制关闭连接
-            limit_per_host_per_scheme=50  # P0优化：提升每个scheme的连接限制
+            force_close=False  # 不强制关闭连接
         )
         
         # 设置超时配置

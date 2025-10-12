@@ -1,0 +1,32 @@
+caching:
+  cache_size_mb: 512
+  cache_ttl: 3600
+  enable_prompt_cache: true
+  enable_response_cache: true
+first_token_optimization:
+  inference_settings:
+    batch_size: 1
+    eos_token_id: 2
+    pad_token_id: 0
+    use_cache: true
+  memory_optimization:
+    flash_attention: true
+    gradient_checkpointing: false
+    torch_compile: true
+  model_settings:
+    do_sample: false
+    max_new_tokens: 1
+    repetition_penalty: 1.0
+    temperature: 0.1
+    top_p: 0.8
+llm_service:
+  api_base: http://localhost:8002
+  max_retries: 1
+  model_name: gpt-3.5-turbo
+  provider: openai
+  timeout: 5.0
+performance_settings:
+  connection_pool_size: 20
+  max_concurrent_requests: 50
+  request_queue_size: 100
+  worker_threads: 8

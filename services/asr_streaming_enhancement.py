@@ -2,18 +2,27 @@
 """
 ASR流式处理增强模块
 解决实时性问题，支持真正的流式语音识别
+集成聊天记录功能
 """
 
 import asyncio
 import logging
 import time
 import json
+import sys
+import os
 from typing import AsyncGenerator, Optional, List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 import numpy as np
 import torch
 from dataclasses import dataclass
+
+# 添加项目根目录到Python路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 导入聊天记录服务
+from core.chat_history_service import ChatHistoryService
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +173,7 @@ class StreamingASRProcessor:
         self.active_sessions.pop(session_id, None)
 
 class StreamingASRService:
-    """流式ASR服务 - 16GB服务器优化版本"""
+    """流式ASR服务 - 16GB服务器优化版本，集成聊天记录功能"""
     
     def __init__(self, base_asr_service):
         self.base_service = base_asr_service
@@ -178,16 +187,46 @@ class StreamingASRService:
         self.max_concurrent_streams = 100
         self.active_connections = {}
         
-    async def handle_streaming_recognition(self, websocket: WebSocket, session_id: str):
-        """处理WebSocket流式识别"""
+        # 聊天记录服务
+        self.chat_service = ChatHistoryService()
+        
+        # 会话管理：存储设备ID和学生ID的映射
+        self.session_device_mapping = {}  # session_id -> device_id
+        self.session_student_mapping = {}  # session_id -> student_id
+        
+        # 累积文本缓存，用于完整句子的记录
+        self.session_text_buffer = {}  # session_id -> accumulated_text
+        
+    async def handle_streaming_recognition(self, websocket: WebSocket, session_id: str, device_id: str = None, student_id: int = None):
+        """处理WebSocket流式识别，集成聊天记录功能"""
         await websocket.accept()
         self.active_connections[session_id] = websocket
+        
+        # 存储设备和学生映射信息
+        if device_id:
+            self.session_device_mapping[session_id] = device_id
+        if student_id:
+            self.session_student_mapping[session_id] = student_id
+        
+        # 初始化文本缓存
+        self.session_text_buffer[session_id] = ""
         
         try:
             chunk_index = 0
             while True:
-                # 接收音频数据
-                data = await websocket.receive_bytes()
+                # 接收数据（可能是音频数据或JSON消息）
+                try:
+                    # 尝试接收JSON消息（包含设备信息）
+                    message = await websocket.receive_json()
+                    if message.get("type") == "device_info":
+                        # 更新设备和学生信息
+                        self.session_device_mapping[session_id] = message.get("device_id", device_id)
+                        self.session_student_mapping[session_id] = message.get("student_id", student_id)
+                        logger.info(f"更新会话 {session_id} 设备信息: device_id={message.get('device_id')}, student_id={message.get('student_id')}")
+                        continue
+                except:
+                    # 如果不是JSON，则接收音频数据
+                    data = await websocket.receive_bytes()
                 
                 # 创建流式请求
                 request = StreamingASRRequest(
@@ -200,16 +239,27 @@ class StreamingASRService:
                 # 处理音频块
                 result = await self.streaming_processor.process_audio_chunk(request)
                 
-                # 发送结果
+                # 发送结果并处理聊天记录
                 if result.text:  # 只发送有文本的结果
-                    await websocket.send_json({
+                    # 累积文本
+                    self.session_text_buffer[session_id] += result.text
+                    
+                    # 发送ASR结果
+                    response = {
                         "session_id": result.session_id,
                         "text": result.text,
                         "confidence": result.confidence,
                         "is_partial": result.is_partial,
                         "chunk_index": result.chunk_index,
                         "processing_time": result.processing_time
-                    })
+                    }
+                    await websocket.send_json(response)
+                    
+                    # 如果是最终结果，记录到聊天历史
+                    if result.is_final or result.confidence > 0.8:
+                        await self._record_user_input(session_id, self.session_text_buffer[session_id])
+                        # 清空缓存
+                        self.session_text_buffer[session_id] = ""
                 
                 chunk_index += 1
                 
@@ -218,9 +268,62 @@ class StreamingASRService:
         except Exception as e:
             logger.error(f"流式识别错误 {session_id}: {e}")
         finally:
+            # 记录最后的累积文本（如果有）
+            if session_id in self.session_text_buffer and self.session_text_buffer[session_id].strip():
+                await self._record_user_input(session_id, self.session_text_buffer[session_id])
+            
             # 清理资源
             self.streaming_processor.cleanup_session(session_id)
             self.active_connections.pop(session_id, None)
+            self.session_device_mapping.pop(session_id, None)
+            self.session_student_mapping.pop(session_id, None)
+            self.session_text_buffer.pop(session_id, None)
+    
+    async def _record_user_input(self, session_id: str, user_text: str):
+        """记录用户输入到聊天历史"""
+        try:
+            device_id = self.session_device_mapping.get(session_id)
+            student_id = self.session_student_mapping.get(session_id)
+            
+            if device_id and student_id and user_text.strip():
+                await self.chat_service.record_chat(
+                    device_id=device_id,
+                    student_id=student_id,
+                    user_input=user_text.strip(),
+                    ai_response="",  # ASR阶段还没有AI响应
+                    session_id=session_id
+                )
+                logger.info(f"记录用户输入: device_id={device_id}, student_id={student_id}, text='{user_text.strip()}'")
+        except Exception as e:
+            logger.error(f"记录用户输入失败 {session_id}: {e}")
+    
+    async def record_ai_response(self, session_id: str, ai_response: str):
+        """记录AI响应到聊天历史"""
+        try:
+            device_id = self.session_device_mapping.get(session_id)
+            student_id = self.session_student_mapping.get(session_id)
+            
+            if device_id and student_id and ai_response.strip():
+                await self.chat_service.record_chat(
+                    device_id=device_id,
+                    student_id=student_id,
+                    user_input="",  # 这里只记录AI响应
+                    ai_response=ai_response.strip(),
+                    session_id=session_id
+                )
+                logger.info(f"记录AI响应: device_id={device_id}, student_id={student_id}, response='{ai_response.strip()}'")
+        except Exception as e:
+            logger.error(f"记录AI响应失败 {session_id}: {e}")
+    
+    async def get_session_info(self, session_id: str) -> dict:
+        """获取会话信息"""
+        return {
+            "session_id": session_id,
+            "device_id": self.session_device_mapping.get(session_id),
+            "student_id": self.session_student_mapping.get(session_id),
+            "text_buffer": self.session_text_buffer.get(session_id, ""),
+            "is_active": session_id in self.active_connections
+        }
     
     async def handle_streaming_http(self, session_id: str, audio_stream) -> AsyncGenerator[str, None]:
         """处理HTTP流式识别"""
@@ -256,13 +359,18 @@ class StreamingASRService:
 
 # FastAPI路由扩展
 def add_streaming_routes(app: FastAPI, asr_service):
-    """添加流式ASR路由"""
+    """添加流式ASR路由，集成聊天记录功能"""
     streaming_service = StreamingASRService(asr_service)
     
     @app.websocket("/asr/stream/{session_id}")
-    async def websocket_streaming_asr(websocket: WebSocket, session_id: str):
-        """WebSocket流式ASR端点"""
-        await streaming_service.handle_streaming_recognition(websocket, session_id)
+    async def websocket_streaming_asr(websocket: WebSocket, session_id: str, device_id: str = None, student_id: int = None):
+        """WebSocket流式ASR端点，支持聊天记录"""
+        await streaming_service.handle_streaming_recognition(websocket, session_id, device_id, student_id)
+    
+    @app.websocket("/asr/stream/{device_id}/{student_id}/{session_id}")
+    async def websocket_streaming_asr_with_ids(websocket: WebSocket, device_id: str, student_id: int, session_id: str):
+        """WebSocket流式ASR端点，明确指定设备ID和学生ID"""
+        await streaming_service.handle_streaming_recognition(websocket, session_id, device_id, student_id)
     
     @app.post("/asr/stream_http/{session_id}")
     async def http_streaming_asr(session_id: str, audio_data: bytes):
@@ -283,5 +391,35 @@ def add_streaming_routes(app: FastAPI, asr_service):
                 "X-Accel-Buffering": "no"
             }
         )
+    
+    @app.post("/asr/record_ai_response/{session_id}")
+    async def record_ai_response(session_id: str, response_data: dict):
+        """记录AI响应到聊天历史"""
+        ai_response = response_data.get("ai_response", "")
+        await streaming_service.record_ai_response(session_id, ai_response)
+        return {"status": "success", "message": "AI响应已记录"}
+    
+    @app.get("/asr/session/{session_id}")
+    async def get_session_info(session_id: str):
+        """获取会话信息"""
+        return await streaming_service.get_session_info(session_id)
+    
+    @app.get("/asr/sessions")
+    async def get_active_sessions():
+        """获取所有活跃会话"""
+        sessions = []
+        for session_id in streaming_service.active_connections.keys():
+            session_info = await streaming_service.get_session_info(session_id)
+            sessions.append(session_info)
+        return {"active_sessions": sessions, "total": len(sessions)}
+    
+    @app.get("/asr/chat_health")
+    async def chat_service_health():
+        """聊天记录服务健康检查"""
+        try:
+            health = await streaming_service.chat_service.health_check()
+            return health
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     
     return streaming_service

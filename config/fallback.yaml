@@ -1,0 +1,86 @@
+# 备用配置（当 Manager-API 配置失效或被禁用时启用）
+notice: "当 http://182.44.78.40:8002/#/role-config?agentId=xxx 配置不可用时，启用本地备用配置"
+
+llm:
+  max_concurrent: 20
+  queue_size: 50
+  request_timeout: 30
+  worker_threads: 2
+  enable_cache: true
+  cache_ttl: 1800
+  semantic_cache: true
+  apis:
+    qwen:
+      model: qwen-turbo
+      weight: 0.4
+    baichuan:
+      model: Baichuan2-Turbo
+      weight: 0.3
+    openai:
+      model: gpt-3.5-turbo
+      weight: 0.3
+
+tts:
+  max_concurrent: 40
+  queue_size: 100
+  request_timeout: 20
+  worker_threads: 4
+  audio_format: mp3
+  audio_quality: medium
+  sample_rate: 22050
+  bit_rate: 64
+  enable_compression: true
+  enable_cache: true
+  cache_ttl: 3600
+  engines:
+    edge:
+      weight: 1.0
+      voice: zh-CN-XiaoxiaoNeural
+
+asr:
+  model_path: /opt/xiaozhi-esp32-server/models/SenseVoiceSmall
+  batch_size: 16
+  max_concurrent: 35
+  worker_threads: 6
+  stream_workers: 2
+  enable_realtime: true
+  chunk_size: 1024
+  stream_buffer_size: 8192
+  dynamic_batching: true
+  batch_timeout_ms: 50
+  enable_fp16: true
+  enable_quantization: true
+
+vad:
+  model_path: /opt/xiaozhi-esp32-server/models/silero_vad.onnx
+  batch_size: 32
+  max_concurrent: 64
+  worker_threads: 4
+  enable_onnx: true
+  onnx_providers:
+    - CPUExecutionProvider
+  graph_optimization: all
+  intra_op_threads: 2
+  inter_op_threads: 2
+  enable_memory_pattern: true
+  enable_memory_arena: true
+
+monitoring:
+  enable: true
+  cpu_warning_threshold: 80
+  cpu_critical_threshold: 90
+  memory_warning_threshold: 80
+  memory_critical_threshold: 85
+  enable_overload_protection: true
+
+system:
+  omp_num_threads: 4
+  mkl_num_threads: 4
+  numba_num_threads: 4
+  malloc_arena_max: 2
+  malloc_mmap_threshold: 131072
+
+cache:
+  enable: true
+  ttl: 600
+  max_size: 1000

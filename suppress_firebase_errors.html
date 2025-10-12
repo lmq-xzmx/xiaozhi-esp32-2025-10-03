@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抑制Firebase错误示例</title>
+</head>
+<body>
+    <h1>如何抑制Firebase错误</h1>
+    <p>如果你想在控制台中隐藏Firebase错误，可以在页面顶部添加以下代码：</p>
+    
+    <script>
+        // 抑制Firebase相关错误的全局错误处理器
+        window.addEventListener('error', function(event) {
+            // 检查是否是Firebase相关错误
+            if (event.error && event.error.message && 
+                (event.error.message.includes('firebase') || 
+                 event.error.message.includes('remoteconfig') ||
+                 event.filename && (event.filename.includes('wally.js') || 
+                                   event.filename.includes('ple.js') || 
+                                   event.filename.includes('remoteConfig.js')))) {
+                // 阻止错误显示在控制台
+                event.preventDefault();
+                return true;
+            }
+        });
+
+        // 抑制未处理的Promise拒绝（Firebase相关）
+        window.addEventListener('unhandledrejection', function(event) {
+            if (event.reason && event.reason.message && 
+                (event.reason.message.includes('firebase') || 
+                 event.reason.message.includes('remoteconfig'))) {
+                // 阻止错误显示在控制台
+                event.preventDefault();
+            }
+        });
+
+        console.log('Firebase错误抑制器已加载');
+    </script>
+</body>
+</html>

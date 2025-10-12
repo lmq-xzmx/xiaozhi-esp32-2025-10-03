@@ -1,0 +1,26 @@
+caching:
+  cache_size_mb: 512
+  cache_ttl: 3600
+  enable_prompt_cache: true
+  enable_response_cache: true
+first_token_optimization:
+  pipeline_settings:
+    parallel_sampling: false
+    prefill_optimization: true
+    speculative_decoding: true
+  streaming_settings:
+    buffer_size: 0
+    chunk_size: 1
+    stream: true
+    stream_first_token: true
+llm_service:
+  api_base: http://localhost:8002
+  max_retries: 1
+  model_name: gpt-3.5-turbo
+  provider: openai
+  timeout: 5.0
+performance_settings:
+  connection_pool_size: 20
+  max_concurrent_requests: 50
+  request_queue_size: 100
+  worker_threads: 8

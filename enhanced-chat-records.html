@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强版聊天记录 - 小智服务器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 设备选择面板 */
+        .devices-panel {
+            width: 300px;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+        }
+
+        .devices-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: white;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .devices-search {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: white;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .devices-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .device-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .device-item:hover {
+            background: #e3f2fd;
+            transform: translateY(-1px);
+        }
+
+        .device-item.active {
+            background: #2196f3;
+            color: white;
+            border-color: #1976d2;
+        }
+
+        .device-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .device-info {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .device-item.active .device-info {
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* 聊天记录面板 */
+        .chat-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chat-device-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .chat-session-count {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 会话列表 */
+        .sessions-panel {
+            width: 280px;
+            border-right: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            background: #fafafa;
+        }
+
+        .sessions-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            background: white;
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .sessions-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .session-item {
+            padding: 12px;
+            margin-bottom: 6px;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #eee;
+        }
+
+        .session-item:hover {
+            background: #f0f8ff;
+            border-color: #2196f3;
+        }
+
+        .session-item.active {
+            background: #2196f3;
+            color: white;
+            border-color: #1976d2;
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .session-id {
+            font-size: 12px;
+            font-weight: 500;
+            color: #666;
+            font-family: monospace;
+        }
+
+        .session-item.active .session-id {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .session-count {
+            font-size: 11px;
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .session-item.active .session-count {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .session-time {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .session-item.active .session-time {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .sessions-pagination {
+            padding: 10px;
+            border-top: 1px solid #eee;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pagination-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn:not(:disabled):hover {
+            background: #f8f9fa;
+        }
+
+        /* 消息列表 */
+        .messages-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .messages-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message-item {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .message-item.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message-avatar.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message-avatar.ai {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .message-content {
+            flex: 1;
+            max-width: 70%;
+        }
+
+        .message-bubble {
+            background: #f5f5f5;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message-item.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-text {
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            text-align: right;
+        }
+
+        .message-item.user .message-time {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .message-audio {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .audio-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #2196f3;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .audio-btn:hover {
+            background: #1976d2;
+        }
+
+        .audio-duration {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 16px;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* 加载状态 */
+        .loading-state {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 14px;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2196f3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 加载文本动画 */
+        .loading-text {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 成功状态 */
+        .success-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #28a745;
+            font-size: 14px;
+        }
+
+        .success-state i {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        /* 错误状态 */
+        .error-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #dc3545;
+            font-size: 14px;
+        }
+
+        .error-state i {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .main-content {
+                flex-direction: column;
+            }
+
+            .devices-panel {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+
+            .chat-panel {
+                flex: 1;
+            }
+
+            .chat-content {
+                flex-direction: column;
+            }
+
+            .sessions-panel {
+                width: 100%;
+                height: 150px;
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+
+            .messages-panel {
+                flex: 1;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .header {
+                padding: 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header-actions {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .devices-panel {
+                height: 180px;
+            }
+
+            .sessions-panel {
+                height: 120px;
+            }
+
+            .header {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.3em;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+
+            .message-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+
+            .message-bubble {
+                padding: 10px 14px;
+            }
+
+            .device-item,
+            .session-item {
+                padding: 10px;
+            }
+
+            .chat-header {
+                padding: 12px 15px;
+            }
+
+            .chat-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+
+        /* 时间分隔线 */
+        .time-divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .time-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #eee;
+        }
+
+        .time-divider span {
+            background: white;
+            padding: 0 15px;
+            color: #999;
+            font-size: 12px;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 增强版聊天记录</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="refreshData()">
+                    🔄 刷新
+                </button>
+                <a href="one-to-many-relations.html" class="btn btn-secondary">
+                    ← 返回主页
+                </a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- 设备选择面板 -->
+            <div class="devices-panel">
+                <div class="devices-header">
+                    设备列表
+                </div>
+                <div class="devices-search">
+                    <input type="text" class="search-input" placeholder="搜索设备..." 
+                           onkeyup="filterDevices(this.value)">
+                </div>
+                <div class="devices-list" id="devices-list">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        加载设备列表...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 聊天记录面板 -->
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <div class="chat-info">
+                        <div class="chat-device-name" id="chat-device-name">请选择设备</div>
+                        <div class="chat-session-count" id="chat-session-count">-</div>
+                    </div>
+                    <div class="chat-actions">
+                        <button class="btn btn-primary" onclick="downloadAllSessions()" 
+                                id="download-all-btn" disabled>
+                            📥 下载全部
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadCurrentSession()" 
+                                id="download-current-btn" disabled>
+                            💾 下载当前
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chat-content">
+                    <!-- 会话列表 -->
+                    <div class="sessions-panel">
+                        <div class="sessions-header">
+                            会话列表
+                        </div>
+                        <div class="sessions-list" id="sessions-list">
+                            <div class="empty-state">
+                                <i>💬</i>
+                                <p>请先选择设备</p>
+                            </div>
+                        </div>
+                        <div class="sessions-pagination" id="sessions-pagination" style="display: none;">
+                            <button class="pagination-btn" id="sessions-prev-btn" onclick="changeSessionsPage(-1)">
+                                ← 上一页
+                            </button>
+                            <span id="sessions-page-info">第 1 页</span>
+                            <button class="pagination-btn" id="sessions-next-btn" onclick="changeSessionsPage(1)">
+                                下一页 →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 消息列表 -->
+                    <div class="messages-panel">
+                        <div class="messages-list" id="messages-list">
+                            <div class="empty-state">
+                                <i>💭</i>
+                                <p>请选择一个会话查看聊天记录</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API配置
+        const API_BASE = 'http://localhost:8081/xiaozhi';
+        const PYTHON_API_BASE = 'http://localhost:8091/api';
+        
+        // 全局状态
+        let currentData = {
+            devices: [],
+            currentDevice: null,
+            sessions: [],
+            currentSession: null,
+            messages: []
+        };
+
+        let pagination = {
+            currentPage: 1,
+            totalPages: 1,
+            pageSize: 10
+        };
+
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDevices();
+        });
+
+        // 加载设备列表
+        async function loadDevices() {
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/devices`);
+                const result = await response.json();
+                currentData.devices = result.data || result;
+                renderDevices();
+            } catch (error) {
+                console.error('加载设备失败:', error);
+                document.getElementById('devices-list').innerHTML = `
+                    <div class="error-state">
+                        <i>❌</i>
+                        <p>加载设备失败</p>
+                        <button class="btn btn-primary" onclick="loadDevices()">重试</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染设备列表
+        function renderDevices(filteredDevices = null) {
+            const devices = filteredDevices || currentData.devices;
+            const container = document.getElementById('devices-list');
+            
+            if (!devices || devices.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i>📱</i>
+                        <p>暂无设备</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = devices.map(device => `
+                <div class="device-item" onclick="selectDevice('${device.id}', '${escapeHtml(device.alias || device.mac_address)}')">
+                    <div class="device-name">${escapeHtml(device.alias || device.mac_address)}</div>
+                    <div class="device-info">
+                        <span>MAC: ${device.mac_address}</span>
+                        <span class="session-count">${getChatCount(device.id)} 条</span>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 过滤设备
+        function filterDevices(keyword) {
+            if (!keyword.trim()) {
+                renderDevices();
+                return;
+            }
+
+            const filtered = currentData.devices.filter(device => 
+                (device.alias && device.alias.toLowerCase().includes(keyword.toLowerCase())) ||
+                device.mac_address.toLowerCase().includes(keyword.toLowerCase())
+            );
+            
+            renderDevices(filtered);
+        }
+
+        // 选择设备
+        async function selectDevice(deviceId, deviceName) {
+            // 更新UI状态
+            document.querySelectorAll('.device-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.device-item').classList.add('active');
+
+            currentData.currentDevice = { id: deviceId, name: deviceName };
+            
+            // 更新头部信息
+            document.getElementById('chat-device-name').textContent = deviceName;
+            document.getElementById('download-all-btn').disabled = false;
+            
+            // 重置会话和消息
+            currentData.currentSession = null;
+            document.getElementById('download-current-btn').disabled = true;
+            
+            // 加载会话列表
+            await loadSessions(deviceId);
+        }
+
+        // 加载会话列表
+        async function loadSessions(deviceId, page = 1) {
+            const container = document.getElementById('sessions-list');
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">加载会话列表...</div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/device/${deviceId}/sessions?page=${page}&per_page=${pagination.pageSize}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentData.sessions = result.data.list || [];
+                    pagination.currentPage = page;
+                    pagination.totalPages = result.data.pagination?.pages || 1;
+                    
+                    renderSessions();
+                    updateSessionsPagination();
+                    
+                    // 更新会话数量显示
+                    document.getElementById('chat-session-count').textContent = 
+                        `共 ${result.data.pagination?.total || 0} 个会话`;
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                console.error('加载会话失败:', error);
+                container.innerHTML = `
+                    <div class="error-state">
+                        <i>❌</i>
+                        <p>加载会话失败</p>
+                        <button class="btn btn-primary" onclick="loadSessions('${deviceId}', ${page})">重试</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染会话列表
+        function renderSessions() {
+            const container = document.getElementById('sessions-list');
+            
+            if (!currentData.sessions || currentData.sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i>💬</i>
+                        <p>暂无会话记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = currentData.sessions.map(session => `
+                <div class="session-item" onclick="selectSession('${session.session_id}')">
+                    <div class="session-header">
+                        <div class="session-id">${session.session_id}</div>
+                        <div class="session-count">${session.chat_count}</div>
+                    </div>
+                    <div class="session-time">${formatDateTime(session.last_message_at)}</div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 选择会话
+        async function selectSession(sessionId) {
+            // 更新UI状态
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.session-item').classList.add('active');
+
+            currentData.currentSession = sessionId;
+            document.getElementById('download-current-btn').disabled = false;
+            
+            // 加载聊天记录
+            await loadMessages(currentData.currentDevice.id, sessionId);
+        }
+
+        // 加载聊天记录
+        async function loadMessages(deviceId, sessionId) {
+            const container = document.getElementById('messages-list');
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">加载聊天记录...</div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/device/${deviceId}/session/${sessionId}/chat-history`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentData.messages = result.data || [];
+                    renderMessages();
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                console.error('加载消息失败:', error);
+                container.innerHTML = `
+                    <div class="error-state">
+                        <i>❌</i>
+                        <p>加载聊天记录失败</p>
+                        <button class="btn btn-primary" onclick="loadMessages('${deviceId}', '${sessionId}')">重试</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 渲染聊天记录
+        function renderMessages() {
+            const container = document.getElementById('messages-list');
+            
+            if (!currentData.messages || currentData.messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i>💭</i>
+                        <p>暂无聊天记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            let lastDate = '';
+
+            currentData.messages.forEach(message => {
+                const messageDate = new Date(message.created_at).toDateString();
+                
+                // 添加日期分隔线
+                if (messageDate !== lastDate) {
+                    html += `
+                        <div class="time-divider">
+                            <span>${formatDate(message.created_at)}</span>
+                        </div>
+                    `;
+                    lastDate = messageDate;
+                }
+
+                const isUser = message.chat_type === 1;
+                const messageClass = isUser ? 'user' : 'ai';
+                
+                html += `
+                    <div class="message-item ${messageClass}">
+                        <div class="message-avatar ${messageClass}">
+                            ${isUser ? '👤' : '🤖'}
+                        </div>
+                        <div class="message-content">
+                            <div class="message-bubble">
+                                <div class="message-text">${escapeHtml(message.content)}</div>
+                                ${message.audio_id ? `
+                                    <div class="message-audio">
+                                        <button class="audio-btn" onclick="playAudio('${message.audio_id}', this)">
+                                            ▶️
+                                        </button>
+                                        <span class="audio-duration">音频消息</span>
+                                    </div>
+                                ` : ''}
+                                <div class="message-time">${formatTime(message.created_at)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            
+            // 滚动到底部
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 更新会话分页
+        function updateSessionsPagination() {
+            const paginationEl = document.getElementById('sessions-pagination');
+            
+            if (pagination.totalPages <= 1) {
+                paginationEl.style.display = 'none';
+                return;
+            }
+
+            paginationEl.style.display = 'flex';
+            document.getElementById('sessions-page-info').textContent = 
+                `第 ${pagination.currentPage} 页，共 ${pagination.totalPages} 页`;
+            
+            document.getElementById('sessions-prev-btn').disabled = pagination.currentPage <= 1;
+            document.getElementById('sessions-next-btn').disabled = pagination.currentPage >= pagination.totalPages;
+        }
+
+        // 切换会话页面
+        function changeSessionsPage(direction) {
+            const newPage = pagination.currentPage + direction;
+            if (newPage >= 1 && newPage <= pagination.totalPages) {
+                loadSessions(currentData.currentDevice.id, newPage);
+            }
+        }
+
+        // 播放音频
+        async function playAudio(audioId, button) {
+            if (!audioId) {
+                showNotification('音频ID不存在', 'warning');
+                return;
+            }
+
+            const originalText = button.textContent;
+            
+            try {
+                button.innerHTML = '<div class="loading-spinner" style="width: 12px; height: 12px; margin-right: 4px; display: inline-block;"></div>加载中...';
+                button.disabled = true;
+
+                const audioUrl = `${PYTHON_API_BASE}/audio/${audioId}`;
+                const audio = new Audio();
+                
+                // 设置音频源
+                audio.src = audioUrl;
+                
+                // 监听加载完成
+                audio.addEventListener('loadeddata', () => {
+                    console.log('音频加载完成');
+                    button.textContent = '⏸️ 播放中...';
+                });
+                
+                // 监听播放开始
+                audio.addEventListener('play', () => {
+                    console.log('音频开始播放');
+                    button.textContent = '⏸️ 播放中...';
+                    showNotification('音频开始播放', 'info');
+                });
+                
+                // 监听播放结束
+                audio.addEventListener('ended', () => {
+                    console.log('音频播放结束');
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    showNotification('音频播放完成', 'success');
+                });
+                
+                // 监听错误
+                audio.addEventListener('error', (e) => {
+                    console.error('音频播放错误:', e);
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    showNotification('音频播放失败', 'error');
+                });
+                
+                // 开始播放
+                await audio.play();
+                
+            } catch (error) {
+                console.error('播放音频失败:', error);
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                // 尝试备用方法：通过fetch获取音频文件
+                try {
+                    button.textContent = '重试中...';
+                    button.disabled = true;
+                    
+                    const response = await fetch(`${PYTHON_API_BASE}/audio/${audioId}`);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const audioUrl = URL.createObjectURL(blob);
+                        const audio = new Audio(audioUrl);
+                        
+                        audio.addEventListener('play', () => {
+                            button.textContent = '⏸️ 播放中...';
+                            showNotification('音频开始播放', 'info');
+                        });
+                        
+                        audio.addEventListener('ended', () => {
+                            URL.revokeObjectURL(audioUrl);
+                            button.textContent = originalText;
+                            button.disabled = false;
+                            showNotification('音频播放完成', 'success');
+                        });
+                        
+                        audio.addEventListener('error', () => {
+                            URL.revokeObjectURL(audioUrl);
+                            button.textContent = originalText;
+                            button.disabled = false;
+                            showNotification('音频播放失败', 'error');
+                        });
+                        
+                        await audio.play();
+                    } else {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                        showNotification('音频文件不存在或无法访问', 'error');
+                    }
+                } catch (fetchError) {
+                    console.error('获取音频文件失败:', fetchError);
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    showNotification('音频播放失败: ' + fetchError.message, 'error');
+                }
+            }
+        }
+
+        // 下载当前会话
+        async function downloadCurrentSession() {
+            if (!currentData.currentDevice || !currentData.currentSession) {
+                alert('请先选择设备和会话');
+                return;
+            }
+
+            try {
+                const content = currentData.messages.map(message => {
+                    const time = formatDateTime(message.created_at);
+                    const sender = message.chat_type === 1 ? '用户' : 'AI助手';
+                    return `[${time}] ${sender}: ${message.content}`;
+                }).join('\n');
+                
+                downloadFile(content, `chat_session_${currentData.currentSession}.txt`);
+                showNotification('会话记录下载成功！', 'success');
+            } catch (error) {
+                console.error('下载失败:', error);
+                showNotification('下载失败: ' + error.message, 'error');
+            }
+        }
+
+        // 下载所有会话
+        async function downloadAllSessions() {
+            if (!currentData.currentDevice) {
+                showNotification('请先选择设备', 'warning');
+                return;
+            }
+
+            try {
+                // 显示下载进度
+                const btn = document.getElementById('download-all-btn');
+                const originalText = btn.textContent;
+                btn.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; margin-right: 8px; display: inline-block;"></div>下载中...';
+                btn.disabled = true;
+
+                // 获取所有聊天记录
+                const response = await fetch(`${PYTHON_API_BASE}/export/chat-data/${currentData.currentDevice.id}`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // 生成导出内容
+                        let content = `设备聊天记录导出\n`;
+                        content += `设备名称: ${currentData.currentDevice.name}\n`;
+                        content += `设备ID: ${currentData.currentDevice.id}\n`;
+                        content += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
+                        content += `总记录数: ${result.data.total_records}\n`;
+                        content += `\n${'='.repeat(50)}\n\n`;
+
+                        // 按会话分组显示
+                        const sessionGroups = {};
+                        result.data.chat_records.forEach(record => {
+                            const sessionId = record.session_id || 'unknown';
+                            if (!sessionGroups[sessionId]) {
+                                sessionGroups[sessionId] = [];
+                            }
+                            sessionGroups[sessionId].push(record);
+                        });
+
+                        Object.keys(sessionGroups).forEach(sessionId => {
+                            const records = sessionGroups[sessionId];
+                            content += `会话ID: ${sessionId}\n`;
+                            content += `消息数量: ${records.length}\n`;
+                            content += `时间范围: ${formatDateTime(records[0].created_at)} - ${formatDateTime(records[records.length - 1].created_at)}\n`;
+                            content += `${'-'.repeat(30)}\n`;
+
+                            records.forEach(record => {
+                                const time = formatDateTime(record.created_at);
+                                const sender = record.chat_type === 1 ? '用户' : 'AI助手';
+                                content += `[${time}] ${sender}: ${record.content}\n`;
+                                if (record.audio_id) {
+                                    content += `    [音频消息: ${record.audio_id}]\n`;
+                                }
+                            });
+                            content += `\n`;
+                        });
+
+                        // 下载文件
+                        const filename = `${currentData.currentDevice.name}_全部聊天记录_${new Date().toISOString().slice(0, 10)}.txt`;
+                        downloadFile(content, filename);
+                        
+                        showNotification('聊天记录下载成功！', 'success');
+                        
+                    } else {
+                        throw new Error(result.message || '导出失败');
+                    }
+                } else {
+                    throw new Error('获取聊天记录失败');
+                }
+
+            } catch (error) {
+                console.error('下载失败:', error);
+                showNotification('下载失败: ' + error.message, 'error');
+            } finally {
+                // 恢复按钮状态
+                const btn = document.getElementById('download-all-btn');
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 通知系统
+        function showNotification(message, type = 'info') {
+            // 移除现有通知
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            // 添加样式
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 6px;
+                color: white;
+                font-size: 14px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+
+            // 设置颜色
+            switch (type) {
+                case 'success':
+                    notification.style.backgroundColor = '#28a745';
+                    break;
+                case 'error':
+                    notification.style.backgroundColor = '#dc3545';
+                    break;
+                case 'warning':
+                    notification.style.backgroundColor = '#ffc107';
+                    notification.style.color = '#212529';
+                    break;
+                default:
+                    notification.style.backgroundColor = '#17a2b8';
+            }
+
+            document.body.appendChild(notification);
+
+            // 动画显示
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+
+            // 自动隐藏
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 刷新数据
+        function refreshData() {
+            loadDevices();
+            if (currentData.currentDevice) {
+                loadSessions(currentData.currentDevice.id);
+            }
+        }
+
+        // 工具函数
+        function getChatCount(deviceId) {
+            // 简化版本，实际应该从API获取
+            return Math.floor(Math.random() * 100);
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return '未知';
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '未知';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        function formatTime(dateString) {
+            if (!dateString) return '未知';
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            if (text == null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function downloadFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

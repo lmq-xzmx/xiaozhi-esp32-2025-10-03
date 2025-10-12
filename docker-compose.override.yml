@@ -1,0 +1,51 @@
+version: '3.8'
+
+# Docker Compose 覆盖配置
+# 用于统一网络配置，连接到xiaozhi-esp32-server的网络
+
+services:
+  xiaozhi-server-web:
+    networks:
+      - xiaozhi_default
+    environment:
+      # 数据库连接配置
+      - DB_HOST=172.20.0.5
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_DATABASE=xiaozhi_esp32_server
+      # Redis连接配置
+      - REDIS_HOST=xiaozhi-esp32-server-redis
+      - REDIS_PORT=6379
+      # ESP32服务器API配置
+      - ESP32_SERVER_HOST=xiaozhi-esp32-server
+      - ESP32_SERVER_PORT=8003
+      - ESP32_WEBSOCKET_PORT=8000
+    depends_on:
+      - xiaozhi-esp32-server
+      - xiaozhi-esp32-server-db
+      - xiaozhi-esp32-server-redis
+
+  xiaozhi-esp32-server:
+    networks:
+      - xiaozhi_default
+
+  xiaozhi-esp32-server-web:
+    networks:
+      - xiaozhi_default
+
+  xiaozhi-esp32-server-db:
+    networks:
+      - xiaozhi_default
+
+  xiaozhi-esp32-server-redis:
+    networks:
+      - xiaozhi_default
+
+networks:
+  xiaozhi_default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

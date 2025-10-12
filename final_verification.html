@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最终验证 - Sessions List 功能</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .device-item { padding: 12px; margin: 5px 0; background: #f8f9fa; cursor: pointer; border: 1px solid #dee2e6; border-radius: 4px; transition: all 0.2s; }
+        .device-item:hover { background: #e9ecef; }
+        .device-item.active { background: #007bff; color: white; }
+        .device-name { font-weight: bold; margin-bottom: 4px; }
+        .device-info { font-size: 12px; color: #666; }
+        .device-item.active .device-info { color: #cce7ff; }
+        .session-item { padding: 12px; margin: 5px 0; background: #fff; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .session-item:hover { background: #f8f9fa; border-color: #007bff; }
+        .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .session-id { font-weight: bold; color: #007bff; }
+        .session-time { font-size: 12px; color: #666; }
+        .session-stats { font-size: 12px; color: #28a745; }
+        .loading-state { text-align: center; padding: 30px; color: #666; }
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-state { text-align: center; padding: 30px; color: #dc3545; }
+        .empty-state { text-align: center; padding: 30px; color: #6c757d; }
+        #sessions-list { min-height: 200px; border: 2px solid #007bff; padding: 15px; border-radius: 5px; background: #f8f9fa; }
+        .debug-log { background: #f8f9fa; padding: 8px; margin: 3px 0; font-family: 'Courier New', monospace; font-size: 11px; border-left: 3px solid #007bff; border-radius: 0 3px 3px 0; }
+        .error-log { border-left-color: #dc3545; background: #f8d7da; }
+        .success-log { border-left-color: #28a745; background: #d4edda; }
+        .warning-log { border-left-color: #ffc107; background: #fff3cd; }
+        .status-bar { background: #e9ecef; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+        .btn { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Sessions List 最终验证</h1>
+        
+        <div class="status-bar">
+            <strong>状态:</strong> <span id="overall-status">初始化中...</span> | 
+            <strong>API服务器:</strong> <span id="api-status">检查中...</span> | 
+            <strong>当前设备:</strong> <span id="current-device-status">无</span>
+        </div>
+
+        <div class="section">
+            <h2>📱 设备列表</h2>
+            <div id="devices-list">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <div>正在加载设备列表...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>💬 Sessions List (核心测试区域)</h2>
+            <div id="sessions-list">
+                <div class="empty-state">
+                    <div style="font-size: 48px;">📋</div>
+                    <p>请先选择一个设备来查看会话列表</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 调试控制台</h2>
+            <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
+            <button class="btn btn-primary" onclick="testAllAPIs()">测试所有API</button>
+            <button class="btn btn-primary" onclick="forceRefresh()">强制刷新</button>
+            <div id="debug-logs" style="max-height: 300px; overflow-y: auto; margin-top: 10px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const PYTHON_API_BASE = 'http://localhost:8091/api';
+        
+        // 完全模拟enhanced-chat-records.html的全局变量结构
+        const currentData = {
+            devices: [],
+            currentDevice: null,
+            currentSession: null,
+            sessions: []
+        };
+        
+        const pagination = {
+            currentPage: 1,
+            totalPages: 1,
+            pageSize: 20
+        };
+
+        function updateStatus(status) {
+            document.getElementById('overall-status').textContent = status;
+        }
+
+        function updateAPIStatus(status) {
+            document.getElementById('api-status').textContent = status;
+        }
+
+        function updateDeviceStatus(status) {
+            document.getElementById('current-device-status').textContent = status;
+        }
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('debug-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logClass = type === 'error' ? 'error-log' : 
+                           type === 'success' ? 'success-log' : 
+                           type === 'warning' ? 'warning-log' : '';
+            logsDiv.innerHTML += `<div class="debug-log ${logClass}">[${timestamp}] ${message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('debug-logs').innerHTML = '';
+        }
+
+        async function testAllAPIs() {
+            log('开始测试所有API端点', 'info');
+            
+            // 测试设备API
+            try {
+                const devicesResponse = await fetch(`${PYTHON_API_BASE}/devices`);
+                if (devicesResponse.ok) {
+                    const devicesData = await devicesResponse.json();
+                    log(`✅ 设备API正常: ${devicesData.data?.length || 0} 个设备`, 'success');
+                    updateAPIStatus('正常');
+                } else {
+                    throw new Error(`HTTP ${devicesResponse.status}`);
+                }
+            } catch (error) {
+                log(`❌ 设备API失败: ${error.message}`, 'error');
+                updateAPIStatus('异常');
+                return;
+            }
+
+            // 测试会话API
+            try {
+                const testDeviceId = '58:8c:81:65:52:48';
+                const sessionsResponse = await fetch(`${PYTHON_API_BASE}/device/${testDeviceId}/sessions`);
+                if (sessionsResponse.ok) {
+                    const sessionsData = await sessionsResponse.json();
+                    log(`✅ 会话API正常: ${sessionsData.data?.list?.length || 0} 个会话`, 'success');
+                } else {
+                    throw new Error(`HTTP ${sessionsResponse.status}`);
+                }
+            } catch (error) {
+                log(`❌ 会话API失败: ${error.message}`, 'error');
+            }
+        }
+
+        function forceRefresh() {
+            log('强制刷新所有数据', 'info');
+            currentData.devices = [];
+            currentData.currentDevice = null;
+            currentData.sessions = [];
+            updateDeviceStatus('无');
+            loadDevices();
+        }
+
+        // 完全模拟enhanced-chat-records.html的escapeHtml函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 模拟getChatCount函数
+        function getChatCount(deviceId) {
+            return '?'; // 简化实现
+        }
+
+        // 完全模拟enhanced-chat-records.html的loadDevices函数
+        async function loadDevices() {
+            log('🔄 开始加载设备列表');
+            updateStatus('加载设备中...');
+            
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/devices`);
+                log(`设备API响应状态: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`设备API原始响应: ${JSON.stringify(result).substring(0, 200)}...`);
+                
+                // 完全按照enhanced-chat-records.html的逻辑
+                currentData.devices = result.data || result;
+                log(`设置currentData.devices，数量: ${currentData.devices.length}`);
+                
+                renderDevices();
+                updateStatus('设备加载完成');
+                updateAPIStatus('正常');
+                
+            } catch (error) {
+                log(`❌ 加载设备失败: ${error.message}`, 'error');
+                updateStatus('设备加载失败');
+                updateAPIStatus('异常');
+                
+                document.getElementById('devices-list').innerHTML = `
+                    <div class="error-state">
+                        <div style="font-size: 48px;">❌</div>
+                        <p>加载设备失败: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadDevices()">重试</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 完全模拟enhanced-chat-records.html的renderDevices函数
+        function renderDevices(filteredDevices = null) {
+            log(`🎨 开始渲染设备列表`);
+            
+            const devices = filteredDevices || currentData.devices;
+            const container = document.getElementById('devices-list');
+            
+            if (!devices || devices.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px;">📱</div>
+                        <p>暂无设备</p>
+                    </div>
+                `;
+                log('⚠️ 设备列表为空', 'warning');
+                return;
+            }
+
+            const html = devices.map(device => {
+                log(`渲染设备: ${device.id} - ${device.alias || device.mac_address}`);
+                return `
+                    <div class="device-item" onclick="selectDevice('${device.id}', '${escapeHtml(device.alias || device.mac_address)}')">
+                        <div class="device-name">${escapeHtml(device.alias || device.mac_address)}</div>
+                        <div class="device-info">
+                            <span>MAC: ${device.mac_address}</span>
+                            <span class="session-count">${getChatCount(device.id)} 条</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+            log(`✅ 成功渲染 ${devices.length} 个设备`, 'success');
+        }
+
+        // 完全模拟enhanced-chat-records.html的selectDevice函数
+        async function selectDevice(deviceId, deviceName) {
+            log(`🎯 选择设备: ${deviceId} (${deviceName})`);
+            
+            // 更新UI状态
+            document.querySelectorAll('.device-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.device-item').classList.add('active');
+
+            currentData.currentDevice = { id: deviceId, name: deviceName };
+            log(`设置currentData.currentDevice: ${JSON.stringify(currentData.currentDevice)}`);
+            
+            updateDeviceStatus(`${deviceId} (${deviceName})`);
+            updateStatus('加载会话中...');
+            
+            // 重置会话和消息
+            currentData.currentSession = null;
+            log('重置currentSession为null');
+            
+            // 加载会话列表
+            log(`🚀 准备调用loadSessions(${deviceId})`);
+            await loadSessions(deviceId);
+        }
+
+        // 完全模拟enhanced-chat-records.html的loadSessions函数
+        async function loadSessions(deviceId, page = 1) {
+            log(`📋 loadSessions被调用: deviceId=${deviceId}, page=${page}`);
+            
+            const container = document.getElementById('sessions-list');
+            container.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">加载会话列表...</div>
+                </div>
+            `;
+            log('sessions-list设置为加载状态');
+
+            try {
+                const url = `${PYTHON_API_BASE}/device/${deviceId}/sessions?page=${page}&per_page=${pagination.pageSize}`;
+                log(`📡 请求URL: ${url}`);
+                
+                const response = await fetch(url);
+                log(`会话API响应状态: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`会话API原始响应: ${JSON.stringify(result)}`);
+                
+                if (result.success) {
+                    log('✅ API返回success=true');
+                    currentData.sessions = result.data.list || [];
+                    log(`设置currentData.sessions，数量: ${currentData.sessions.length}`);
+                    
+                    pagination.currentPage = page;
+                    pagination.totalPages = result.data.pagination?.pages || 1;
+                    log(`更新分页: currentPage=${pagination.currentPage}, totalPages=${pagination.totalPages}`);
+                    
+                    log('🎨 准备调用renderSessions()');
+                    renderSessions();
+                    updateStatus('会话加载完成');
+                    
+                    // 更新会话数量显示
+                    const totalCount = result.data.pagination?.total || 0;
+                    log(`📊 会话总数: ${totalCount}`, 'success');
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                log(`❌ loadSessions出错: ${error.message}`, 'error');
+                updateStatus('会话加载失败');
+                console.error('加载会话失败:', error);
+                container.innerHTML = `
+                    <div class="error-state">
+                        <div style="font-size: 48px;">❌</div>
+                        <p>加载会话失败: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadSessions('${deviceId}', ${page})">重试</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 完全模拟enhanced-chat-records.html的renderSessions函数
+        function renderSessions() {
+            log(`🎨 renderSessions被调用，sessions数量: ${currentData.sessions ? currentData.sessions.length : 0}`);
+            
+            const container = document.getElementById('sessions-list');
+            
+            if (!currentData.sessions || currentData.sessions.length === 0) {
+                log('⚠️ sessions为空，显示空状态', 'warning');
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px;">💬</div>
+                        <p>该设备暂无会话记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            log('🎨 开始渲染sessions');
+            const html = currentData.sessions.map((session, index) => {
+                log(`渲染session ${index}: ${session.session_id}`);
+                return `
+                    <div class="session-item" onclick="selectSession('${session.session_id}')">
+                        <div class="session-header">
+                            <div class="session-id">${session.session_id}</div>
+                            <div class="session-time">${session.created_at || '未知时间'}</div>
+                        </div>
+                        <div class="session-stats">
+                            💬 ${session.chat_count || 0} 条消息 | 
+                            🕒 最后活动: ${session.last_message_at || '未知'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = html;
+            log(`✅ 成功渲染 ${currentData.sessions.length} 个会话`, 'success');
+        }
+
+        function selectSession(sessionId) {
+            log(`🎯 选择会话: ${sessionId}`);
+            currentData.currentSession = sessionId;
+            
+            // 高亮选中的会话
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.style.background = '#fff';
+            });
+            event.target.closest('.session-item').style.background = '#e3f2fd';
+        }
+
+        // 页面加载完成后自动初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 页面加载完成，开始初始化');
+            updateStatus('初始化中...');
+            loadDevices();
+        });
+    </script>
+</body>
+</html>

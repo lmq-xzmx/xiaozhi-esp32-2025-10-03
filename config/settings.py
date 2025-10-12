@@ -4,6 +4,16 @@
 import os
 import yaml
 from typing import Dict, Any, Optional
+from pathlib import Path
+
+def _deep_merge(dst: Dict[str, Any], src: Dict[str, Any]) -> Dict[str, Any]:
+    """浅递归合并字典，src覆盖dst对应项"""
+    for k, v in (src or {}).items():
+        if isinstance(v, dict) and isinstance(dst.get(k), dict):
+            _deep_merge(dst[k], v)
+        else:
+            dst[k] = v
+    return dst
 
 def load_config() -> Dict[str, Any]:
     """
@@ -163,7 +173,41 @@ def load_config() -> Dict[str, Any]:
             "backup_count": int(os.getenv("LOG_BACKUP_COUNT", "5")),
         },
     }
-    
+    # 读取 Manager-API 配置开关（来自 data/.config.yaml 或环境变量）
+    try:
+        project_root = Path(__file__).resolve().parent.parent
+        data_cfg_path = project_root / 'data' / '.config.yaml'
+        manager_cfg = load_yaml_config(str(data_cfg_path)) or {}
+    except Exception:
+        manager_cfg = {}
+
+    read_config_from_api = os.getenv('READ_CONFIG_FROM_API', str(manager_cfg.get('read_config_from_api', 'true'))).lower() == 'true'
+    manager_api_url = os.getenv('MANAGER_API_URL', manager_cfg.get('manager_api_url', ''))
+    force_offline = os.getenv('MANAGER_API_FORCE_OFFLINE', 'false').lower() == 'true'
+    fallback_file = os.getenv('FALLBACK_CONFIG_FILE', str(project_root / 'config' / 'fallback.yaml'))
+
+    # 标注配置模式：默认使用 Manager-API；不可用时启用备用配置
+    config['config_mode'] = 'manager_api' if read_config_from_api and not force_offline else 'fallback'
+    config['config_source'] = {
+        'manager_api_url': manager_api_url,
+        'fallback_file': fallback_file,
+        'read_config_from_api': read_config_from_api,
+        'force_offline': force_offline,
+    }
+
+    # 当 Manager-API 失效或被强制离线时，启用备用配置
+    if config['config_mode'] == 'fallback':
+        fallback_cfg = load_yaml_config(fallback_file) or {}
+        if fallback_cfg:
+            # 明确合并关键服务的备用配置
+            for section in ['llm', 'tts', 'asr', 'vad', 'monitoring', 'system', 'cache']:
+                if section in fallback_cfg:
+                    _deep_merge(config.setdefault(section, {}), fallback_cfg[section])
+            # 记录备用原因
+            config['config_fallback_reason'] = 'Manager-API 不可用或被禁用，启用本地备用配置'
+        else:
+            config['config_fallback_reason'] = '找不到备用配置文件，使用内置默认配置'
+
     return config
 
 def get_config_value(key: str, default: Any = None) -> Any:

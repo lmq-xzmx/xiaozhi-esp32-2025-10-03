@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sessions List 测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .device-item { padding: 10px; margin: 5px 0; background: #f5f5f5; cursor: pointer; }
+        .device-item:hover { background: #e0e0e0; }
+        .session-item { padding: 8px; margin: 3px 0; background: #fff; border: 1px solid #ccc; }
+        .loading { color: #666; font-style: italic; }
+        .error { color: red; }
+        .success { color: green; }
+        #sessions-list { min-height: 100px; border: 2px solid #007bff; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sessions List 调试测试</h1>
+        
+        <div class="section">
+            <h2>1. API 连接测试</h2>
+            <button onclick="testDevicesAPI()">测试设备API</button>
+            <button onclick="testSessionsAPI()">测试会话API</button>
+            <div id="api-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. 设备列表</h2>
+            <div id="devices-list">加载中...</div>
+        </div>
+
+        <div class="section">
+            <h2>3. Sessions List (核心测试区域)</h2>
+            <p>当前选中设备: <span id="current-device">无</span></p>
+            <div id="sessions-list">
+                <div class="loading">请先选择一个设备</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>4. 调试信息</h2>
+            <div id="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        const PYTHON_API_BASE = 'http://localhost:8091/api';
+        let currentDevice = null;
+
+        function log(message, type = 'info') {
+            const debugInfo = document.getElementById('debug-info');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            debugInfo.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        async function testDevicesAPI() {
+            const resultsDiv = document.getElementById('api-results');
+            resultsDiv.innerHTML = '<div class="loading">测试设备API...</div>';
+            
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/devices`);
+                const data = await response.json();
+                resultsDiv.innerHTML = `<div class="success">设备API成功: 找到 ${data.length} 个设备</div>`;
+                log(`设备API测试成功: ${data.length} 个设备`, 'success');
+                return data;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">设备API失败: ${error.message}</div>`;
+                log(`设备API测试失败: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testSessionsAPI() {
+            const resultsDiv = document.getElementById('api-results');
+            const testDeviceId = '58:8c:81:65:52:48';
+            resultsDiv.innerHTML = '<div class="loading">测试会话API...</div>';
+            
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/device/${testDeviceId}/sessions`);
+                const data = await response.json();
+                resultsDiv.innerHTML = `<div class="success">会话API成功: 找到 ${data.sessions.length} 个会话</div>`;
+                log(`会话API测试成功: ${data.sessions.length} 个会话`, 'success');
+                return data;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">会话API失败: ${error.message}</div>`;
+                log(`会话API测试失败: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function loadDevices() {
+            const devicesDiv = document.getElementById('devices-list');
+            devicesDiv.innerHTML = '<div class="loading">加载设备中...</div>';
+            
+            try {
+                const response = await fetch(`${PYTHON_API_BASE}/devices`);
+                const devices = await response.json();
+                
+                devicesDiv.innerHTML = '';
+                devices.forEach(device => {
+                    const deviceDiv = document.createElement('div');
+                    deviceDiv.className = 'device-item';
+                    deviceDiv.textContent = `${device.device_id} (${device.device_name || '未命名'})`;
+                    deviceDiv.onclick = () => selectDevice(device.device_id);
+                    devicesDiv.appendChild(deviceDiv);
+                });
+                
+                log(`成功加载 ${devices.length} 个设备`, 'success');
+            } catch (error) {
+                devicesDiv.innerHTML = `<div class="error">加载设备失败: ${error.message}</div>`;
+                log(`加载设备失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function selectDevice(deviceId) {
+            currentDevice = deviceId;
+            document.getElementById('current-device').textContent = deviceId;
+            log(`选择设备: ${deviceId}`, 'info');
+            
+            // 立即更新sessions-list显示加载状态
+            const sessionsList = document.getElementById('sessions-list');
+            sessionsList.innerHTML = '<div class="loading">加载会话中...</div>';
+            
+            await loadSessions(deviceId);
+        }
+
+        async function loadSessions(deviceId) {
+            const sessionsList = document.getElementById('sessions-list');
+            
+            try {
+                log(`开始加载设备 ${deviceId} 的会话`, 'info');
+                const response = await fetch(`${PYTHON_API_BASE}/device/${deviceId}/sessions`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`API返回数据: ${JSON.stringify(data)}`, 'info');
+                
+                if (!data.sessions || data.sessions.length === 0) {
+                    sessionsList.innerHTML = '<div>该设备暂无会话记录</div>';
+                    log('该设备暂无会话记录', 'info');
+                    return;
+                }
+                
+                // 渲染会话列表
+                sessionsList.innerHTML = '';
+                data.sessions.forEach((session, index) => {
+                    const sessionDiv = document.createElement('div');
+                    sessionDiv.className = 'session-item';
+                    sessionDiv.innerHTML = `
+                        <strong>会话 ${index + 1}</strong><br>
+                        开始时间: ${session.start_time || '未知'}<br>
+                        结束时间: ${session.end_time || '进行中'}<br>
+                        消息数量: ${session.message_count || 0}
+                    `;
+                    sessionsList.appendChild(sessionDiv);
+                });
+                
+                log(`成功渲染 ${data.sessions.length} 个会话`, 'success');
+                
+            } catch (error) {
+                sessionsList.innerHTML = `<div class="error">加载会话失败: ${error.message}</div>`;
+                log(`加载会话失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载完成后自动加载设备
+        document.addEventListener('DOMContentLoaded', function() {
+            log('页面加载完成，开始初始化', 'info');
+            loadDevices();
+        });
+    </script>
+</body>
+</html>

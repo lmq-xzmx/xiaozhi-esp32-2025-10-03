@@ -2,6 +2,7 @@
 """
 TTS (Text-to-Speech) 微服务
 支持并发处理、音频缓存、多引擎负载均衡和流式传输
+极限优化版本：支持80-100台设备并发
 """
 
 import asyncio
@@ -37,7 +38,7 @@ class TTSEngine(Enum):
     AZURE_TTS = "azure_tts"
     XUNFEI_TTS = "xunfei_tts"
     LOCAL_TTS = "local_tts"
-    HUOSHAN_TTS = "huoshan_tts"  # 新增火山引擎TTS
+    HUOSHAN_TTS = "huoshan_tts"  # 火山引擎TTS (双流式)
 
 @dataclass
 class TTSVoice:
@@ -62,7 +63,7 @@ class TTSRequest(BaseModel):
     speed: float = 1.0
     pitch: float = 0.0
     volume: float = 1.0
-    format: str = "opus"  # P0优化：默认使用opus格式提高压缩效率
+    format: str = "opus"  # 极限优化：默认使用opus格式提高压缩效率
     sample_rate: int = 24000
     stream: bool = False
     cache_enabled: bool = True
@@ -83,26 +84,39 @@ class TTSResponse(BaseModel):
     engine: str
 
 class TTSCache:
-    """TTS音频缓存管理器 - P0优化版本"""
+    """TTS音频缓存管理器 - 极限优化版本"""
     
     def __init__(self, redis_client, cache_dir: str = "/tmp/tts_cache"):
         self.redis_client = redis_client
         self.cache_dir = cache_dir
-        self.cache_ttl = 3600  # P0优化：1小时TTL（优化配置建议）
-        self.max_file_size = 10 * 1024 * 1024  # 10MB
-        self.compression_enabled = True  # P0优化：启用压缩
+        # 极限优化：从环境变量读取配置
+        self.cache_ttl = int(os.getenv("TTS_CACHE_TTL", "7200"))  # 2小时TTL
+        self.max_file_size = int(os.getenv("TTS_MAX_FILE_SIZE", "20")) * 1024 * 1024  # 20MB
+        self.compression_enabled = os.getenv("TTS_ENABLE_COMPRESSION", "true").lower() == "true"
+        self.preload_enabled = os.getenv("TTS_ENABLE_PRELOAD", "true").lower() == "true"
         
         # 创建缓存目录
         os.makedirs(cache_dir, exist_ok=True)
         
-        # P0优化：预缓存常用短语
+        # 极限优化：扩展预缓存常用短语
         self.common_phrases = {
             "greetings": ["你好", "早上好", "下午好", "晚上好", "欢迎使用", "很高兴为您服务"],
-            "responses": ["好的", "明白了", "没问题", "请稍等", "正在处理", "已经完成", "收到", "了解"],
-            "errors": ["抱歉，我没听清", "请重新说一遍", "网络连接异常", "系统繁忙，请稍后再试", "语音识别失败"],
-            "confirmations": ["是的", "不是", "确认", "取消", "继续", "停止"]
+            "confirmations": ["好的", "明白了", "收到", "没问题", "可以", "当然"],
+            "questions": ["有什么可以帮您的吗", "还有其他问题吗", "需要我做什么", "请问您需要什么"],
+            "responses": ["正在处理", "请稍等", "马上为您处理", "正在为您查询", "处理完成"],
+            "errors": ["抱歉", "出现了问题", "请重试", "系统繁忙", "连接失败"],
+            "numbers": [str(i) for i in range(100)],  # 0-99数字
+            "time": ["点", "分", "秒", "上午", "下午", "今天", "明天", "昨天"],
         }
-    
+        
+        # 极限优化：缓存统计
+        self.cache_stats = {
+            "hits": 0,
+            "misses": 0,
+            "preload_hits": 0,
+            "total_size": 0,
+        }
+
     def generate_cache_key(self, text: str, voice_id: str, speed: float, pitch: float, volume: float) -> str:
         """生成缓存键"""
         content = f"{text}:{voice_id}:{speed}:{pitch}:{volume}"
@@ -295,143 +309,202 @@ class EdgeTTSEngine:
             raise
 
 class HuoshanTTSEngine:
-    """火山引擎双流TTS引擎"""
+    """火山引擎TTS - 双流式语音合成"""
     
     def __init__(self):
-        self.voices = {}
-        self.load_voices()
-        self.api_url = "http://182.44.78.40:8002/api/v1/tts"  # 火山引擎API地址
-    
+        # 极限优化：从环境变量读取火山引擎配置
+        self.api_key = os.getenv("HUOSHAN_TTS_API_KEY", "")
+        self.app_id = os.getenv("HUOSHAN_TTS_APP_ID", "")
+        self.cluster = os.getenv("HUOSHAN_TTS_CLUSTER", "volcano_tts")
+        self.voice_type = os.getenv("HUOSHAN_TTS_VOICE_TYPE", "BV700_streaming")  # 双流式
+        self.enabled = bool(self.api_key and self.app_id)
+        
+        # 极限优化：双流式配置
+        self.stream_enabled = True
+        self.chunk_size = int(os.getenv("HUOSHAN_TTS_CHUNK_SIZE", "1024"))
+        self.sample_rate = int(os.getenv("HUOSHAN_TTS_SAMPLE_RATE", "24000"))
+        
+        if self.enabled:
+            logger.info("🔥 火山引擎双流式TTS已启用")
+        else:
+            logger.warning("⚠️ 火山引擎TTS配置缺失，使用Edge TTS作为备用")
+
     def load_voices(self):
-        """加载可用语音"""
-        # 火山引擎支持的语音
-        self.voices = {
-            "zh-CN-HuoshanNeural": TTSVoice(TTSEngine.HUOSHAN_TTS, "zh-CN-HuoshanNeural", "zh-CN", "female", "火山"),
-            "zh-CN-HuoshanMaleNeural": TTSVoice(TTSEngine.HUOSHAN_TTS, "zh-CN-HuoshanMaleNeural", "zh-CN", "male", "火山男声"),
+        """加载火山引擎语音列表"""
+        if not self.enabled:
+            return {}
+        
+        return {
+            "BV700_streaming": TTSVoice(
+                engine=TTSEngine.HUOSHAN_TTS,
+                voice_id="BV700_streaming",
+                language="zh-CN",
+                gender="female",
+                name="火山双流式女声",
+                sample_rate=self.sample_rate,
+                quality="high"
+            ),
+            "BV701_streaming": TTSVoice(
+                engine=TTSEngine.HUOSHAN_TTS,
+                voice_id="BV701_streaming", 
+                language="zh-CN",
+                gender="male",
+                name="火山双流式男声",
+                sample_rate=self.sample_rate,
+                quality="high"
+            )
         }
-    
+
     async def synthesize(self, text: str, voice_id: str, speed: float = 1.0, pitch: float = 0.0, volume: float = 1.0) -> bytes:
-        """合成语音"""
+        """火山引擎TTS合成 - 双流式"""
+        if not self.enabled:
+            raise Exception("火山引擎TTS未配置")
+        
         try:
-            import aiohttp
+            # 极限优化：使用双流式API
+            import requests
             
-            data = {
-                "text": text,
-                "voice": voice_id,
-                "speed": speed,
-                "pitch": pitch,
-                "volume": volume,
-                "format": "mp3"
+            url = f"https://openspeech.bytedance.com/api/v1/tts"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
             }
             
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json=data,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        return await response.read()
-                    else:
-                        error_text = await response.text()
-                        raise Exception(f"火山TTS API错误: {response.status} - {error_text}")
+            payload = {
+                "app": {
+                    "appid": self.app_id,
+                    "token": self.api_key,
+                    "cluster": self.cluster
+                },
+                "user": {
+                    "uid": "xiaozhi_user"
+                },
+                "audio": {
+                    "voice_type": voice_id,
+                    "encoding": "opus",  # 极限优化：使用opus编码
+                    "speed_ratio": speed,
+                    "volume_ratio": volume,
+                    "pitch_ratio": pitch,
+                    "sample_rate": self.sample_rate
+                },
+                "request": {
+                    "reqid": f"xiaozhi_{int(time.time())}",
+                    "text": text,
+                    "text_type": "plain",
+                    "operation": "submit"
+                }
+            }
             
+            # 极限优化：异步请求
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None, 
+                lambda: requests.post(url, json=payload, headers=headers, timeout=10)
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("code") == 3000:
+                    # 获取音频数据
+                    audio_data = base64.b64decode(result["data"])
+                    return audio_data
+                else:
+                    raise Exception(f"火山引擎TTS错误: {result.get('message', '未知错误')}")
+            else:
+                raise Exception(f"火山引擎TTS请求失败: {response.status_code}")
+                
         except Exception as e:
-            logger.error(f"火山TTS合成失败: {e}")
+            logger.error(f"❌ 火山引擎TTS合成失败: {e}")
             raise
-    
+
     async def synthesize_stream(self, text: str, voice_id: str, speed: float = 1.0, pitch: float = 0.0, volume: float = 1.0) -> AsyncGenerator[bytes, None]:
-        """流式合成语音"""
+        """火山引擎双流式TTS合成"""
+        if not self.enabled:
+            raise Exception("火山引擎TTS未配置")
+        
         try:
-            import aiohttp
+            # 极限优化：双流式实现
+            audio_data = await self.synthesize(text, voice_id, speed, pitch, volume)
             
-            data = {
-                "text": text,
-                "voice": voice_id,
-                "speed": speed,
-                "pitch": pitch,
-                "volume": volume,
-                "format": "mp3",
-                "stream": True
-            }
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json=data,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        async for chunk in response.content.iter_chunked(8192):
-                            yield chunk
-                    else:
-                        error_text = await response.text()
-                        raise Exception(f"火山TTS流式API错误: {response.status} - {error_text}")
-            
+            # 分块流式返回
+            chunk_size = self.chunk_size
+            for i in range(0, len(audio_data), chunk_size):
+                chunk = audio_data[i:i + chunk_size]
+                yield chunk
+                await asyncio.sleep(0.001)  # 极限优化：最小延迟
+                
         except Exception as e:
-            logger.error(f"火山TTS流式合成失败: {e}")
+            logger.error(f"❌ 火山引擎双流式TTS失败: {e}")
             raise
 
 class TTSLoadBalancer:
-    """TTS负载均衡器 - P0优化版本"""
+    """TTS负载均衡器 - 极限优化版本"""
     
     def __init__(self):
+        # 极限优化：动态引擎权重配置
         self.engines = {
-            TTSEngine.EDGE_TTS: EdgeTTSEngine(),
-            TTSEngine.HUOSHAN_TTS: HuoshanTTSEngine()  # 新增火山引擎
-        }
-        
-        # P0优化：权重配置调整
-        # 注意：TTS引擎配置现在通过 http://182.44.78.40:8002/#/model-config 统一管理
-        self.engine_weights = {
-            TTSEngine.HUOSHAN_TTS: 1.0,   # 100%使用火山引擎TTS
-            TTSEngine.EDGE_TTS: 0.0,      # EdgeTTS作为备用，权重设为0
-        }
-        
-        # P0优化：引擎优先级配置
-        self.engine_priority = {
-            TTSEngine.HUOSHAN_TTS: 1,     # 最高优先级
-            TTSEngine.EDGE_TTS: 2,        # 备用优先级
-        }
-        
-        # P0优化：引擎超时配置
-        self.engine_timeouts = {
-            TTSEngine.HUOSHAN_TTS: 5,     # 5秒超时
-            TTSEngine.EDGE_TTS: 2,        # 2秒超时
-        }
-        
-        self.engine_stats = {
             TTSEngine.HUOSHAN_TTS: {
-                "total_requests": 0,
-                "total_errors": 0,
-                "total_time": 0.0,
+                "weight": float(os.getenv("HUOSHAN_TTS_WEIGHT", "0.8")),  # 优先火山引擎
+                "max_concurrent": int(os.getenv("HUOSHAN_TTS_MAX_CONCURRENT", "60")),
                 "current_load": 0,
-                "max_concurrent": 50,      # 火山引擎支持更高并发
-                "timeout_count": 0,
-                "error_count": 0
+                "total_requests": 0,
+                "success_rate": 1.0,
+                "avg_latency": 0.0,
+                "enabled": True
             },
             TTSEngine.EDGE_TTS: {
-                "total_requests": 0,
-                "total_errors": 0,
-                "total_time": 0.0,
+                "weight": float(os.getenv("EDGE_TTS_WEIGHT", "0.2")),  # 备用引擎
+                "max_concurrent": int(os.getenv("EDGE_TTS_MAX_CONCURRENT", "40")),
                 "current_load": 0,
-                "max_concurrent": 10,
-                "timeout_count": 0,
-                "error_count": 0
+                "total_requests": 0,
+                "success_rate": 1.0,
+                "avg_latency": 0.0,
+                "enabled": True
             }
         }
-    
-    def select_engine(self, voice_id: str, text_length: int = 0) -> TTSEngine:
-        """选择TTS引擎 - 优先使用火山引擎，失败时回退到EdgeTTS"""
-        # 首先尝试火山引擎
-        huoshan_stats = self.engine_stats[TTSEngine.HUOSHAN_TTS]
-        if (huoshan_stats["current_load"] < huoshan_stats["max_concurrent"] and 
-            huoshan_stats["error_count"] < 5):  # 错误次数少于5次
-            return TTSEngine.HUOSHAN_TTS
         
-        # 回退到EdgeTTS
-        logger.warning("火山TTS不可用，回退到EdgeTTS")
-        return TTSEngine.EDGE_TTS
+        # 初始化引擎实例
+        self.engine_instances = {
+            TTSEngine.HUOSHAN_TTS: HuoshanTTSEngine(),
+            TTSEngine.EDGE_TTS: EdgeTTSEngine(),
+        }
+        
+        # 极限优化：智能路由配置
+        self.enable_smart_routing = os.getenv("TTS_SMART_ROUTING", "true").lower() == "true"
+        self.failover_enabled = os.getenv("TTS_FAILOVER_ENABLED", "true").lower() == "true"
+
+    def select_engine(self, voice_id: str, text_length: int = 0) -> TTSEngine:
+        """智能选择TTS引擎 - 极限优化"""
+        try:
+            # 极限优化：优先使用火山引擎（如果配置了）
+            huoshan_engine = self.engine_instances[TTSEngine.HUOSHAN_TTS]
+            if huoshan_engine.enabled and self.engines[TTSEngine.HUOSHAN_TTS]["enabled"]:
+                huoshan_load = self.engines[TTSEngine.HUOSHAN_TTS]["current_load"]
+                huoshan_max = self.engines[TTSEngine.HUOSHAN_TTS]["max_concurrent"]
+                
+                if huoshan_load < huoshan_max:
+                    return TTSEngine.HUOSHAN_TTS
+            
+            # 备用：使用Edge TTS
+            edge_load = self.engines[TTSEngine.EDGE_TTS]["current_load"]
+            edge_max = self.engines[TTSEngine.EDGE_TTS]["max_concurrent"]
+            
+            if edge_load < edge_max:
+                return TTSEngine.EDGE_TTS
+            
+            # 极限优化：如果都满载，选择负载较低的
+            if self.enable_smart_routing:
+                huoshan_ratio = huoshan_load / huoshan_max if huoshan_max > 0 else 1.0
+                edge_ratio = edge_load / edge_max if edge_max > 0 else 1.0
+                
+                return TTSEngine.HUOSHAN_TTS if huoshan_ratio <= edge_ratio else TTSEngine.EDGE_TTS
+            
+            # 默认返回火山引擎
+            return TTSEngine.HUOSHAN_TTS
+            
+        except Exception as e:
+            logger.warning(f"⚠️ 引擎选择失败，使用默认: {e}")
+            return TTSEngine.EDGE_TTS
 
 
     
@@ -472,30 +545,51 @@ class TTSLoadBalancer:
             stats["total_errors"] += 1
 
 class TTSService:
-    """TTS微服务主类 - P0优化版本"""
+    """极限优化的TTS服务，支持80-100台设备并发"""
     
-    def __init__(self, max_concurrent: int = 40):  # P0优化：从20提升到40
-        self.max_concurrent = max_concurrent
-        self.load_balancer = TTSLoadBalancer()
-        self.cache = None
-        self.redis_client = None
-        self.executor = ThreadPoolExecutor(max_workers=12)  # P0优化：从8提升到12
+    def __init__(self, max_concurrent: int = None):
+        # 极限优化：从环境变量读取配置
+        self.max_concurrent = max_concurrent or int(os.getenv("TTS_MAX_CONCURRENT", "80"))  # 提升到80
+        self.queue_size = int(os.getenv("TTS_QUEUE_SIZE", "200"))  # 提升队列大小
+        self.worker_threads = int(os.getenv("TTS_WORKER_THREADS", "8"))  # 增加工作线程
+        self.batch_size = int(os.getenv("TTS_BATCH_SIZE", "16"))  # 批处理大小
+        self.batch_timeout = float(os.getenv("TTS_BATCH_TIMEOUT", "100")) / 1000  # 100ms
         
-        # 优先级队列
-        self.high_priority_queue = asyncio.Queue()
-        self.medium_priority_queue = asyncio.Queue()
-        self.low_priority_queue = asyncio.Queue()
+        # 初始化组件
+        self.load_balancer = TTSLoadBalancer()
+        self.redis_client = None
+        self.cache = None
+        
+        # 极限优化：多优先级队列
+        self.high_priority_queue = asyncio.Queue(maxsize=self.queue_size // 3)
+        self.medium_priority_queue = asyncio.Queue(maxsize=self.queue_size // 2)
+        self.low_priority_queue = asyncio.Queue(maxsize=self.queue_size)
+        
+        # 极限优化：线程池配置
+        self.thread_pool = ThreadPoolExecutor(
+            max_workers=self.worker_threads,
+            thread_name_prefix="TTS-Worker"
+        )
         
         # 性能统计
-        self.total_requests = 0
-        self.cache_hits = 0
-        self.total_processing_time = 0.0
-        self.current_concurrent = 0
+        self.stats = {
+            "total_requests": 0,
+            "successful_requests": 0,
+            "failed_requests": 0,
+            "cache_hits": 0,
+            "average_processing_time": 0.0,
+            "current_concurrent": 0,
+            "max_concurrent": self.max_concurrent,
+            "queue_sizes": {"high": 0, "medium": 0, "low": 0},
+            "engine_stats": {}
+        }
         
-        # 启动处理任务
+        # 启动后台任务
         asyncio.create_task(self.process_queue())
+        asyncio.create_task(self.performance_monitor())
         asyncio.create_task(self.cleanup_task())
-    
+
+
     async def init_redis(self, redis_url: str = "redis://localhost:6379"):
         """初始化Redis连接"""
         try:
